@@ -20,6 +20,60 @@ def majority_voting(r_obs,onehot=False,probas=False):
         mv = keras.utils.to_categorical(mv)
     return mv
 
+
+class LabelAggregation(object): #no predictive model
+    def __init__(self, scenario="global"): 
+        self.scenario = scenario
+        return
+
+    def infer(self, labels, method, weights=[1], onehot=False):
+        """
+            *labels is annotations : should be individual or global representation
+        """
+        method = method.lower()
+        
+        if self.scenario == "global":
+            if len(labels.shape) != 2:
+                r_obs = annotations2repeat_efficient(labels).astype('float32')
+            else:
+                r_obs = labels.astype('float32')
+
+            if method == 'softmv': 
+                to_return = r_obs/r_obs.sum(axis=-1, keepdims=True)
+
+                #mv_probas = majority_voting(r_obs, probas=True) 
+
+            elif method == "hardmv":
+                #to_return =  majority_voting(r_obs, probas=False) 
+                to_return = r_obs.argmax(axis=1) #over classes axis
+                if onehot: 
+                    to_return = keras.utils.to_categorical(to_return)
+
+        elif self.scenario == "individual":
+            if len ==2:
+                y_obs_categorical = set_representation(y_obs,'onehot') 
+            else:
+                y_obs_categorical = labels.astype('float32')
+
+            weights = np.asarray(weights, dtype='float32')
+            r_obs = (y_obs_categorical*weights[None,:,None]).sum(axis=1)
+
+            if method == 'softmv': 
+                #mv_probas = majority_voting(r_obs, probas=True) 
+                to_return = r_obs/r_obs.sum(axis=-1, keepdims=True)
+
+            elif method == "hardmv":
+                to_return = r_obs.argmax(axis=1) #over classes axis
+                if onehot: 
+                    to_return = keras.utils.to_categorical(to_return)
+
+        return to_return
+
+
+    def predict(self, *args):
+        return self.infer(*args)
+
+
 class LabelInference(object): #no predictive model
     def __init__(self): #, method, tolerance, max_iter=50): 
         return
@@ -50,23 +104,6 @@ class LabelInference(object): #no predictive model
             r_obs = labels
 
 
-        if method == 'softmv': 
-            mv_probas = majority_voting(r_obs, probas=True) 
-            #prob_Yz = generate_confusionM(self.mv_probas, self.y_obs_repeat) #confusion matrix of all annotators
-            return mv_probas #, prob_Yz
-
-        elif method == "hardmv":
-            to_return =  majority_voting(r_obs, probas=False) #aka soft-MV
-            #prob_Yz = generate_confusionM(to_return, self.y_obs_repeat) #confusion matrix of all annotators
-            return to_return #, prob_Yz
-
-        #elif self.method == 'hardMV' or self.method == 'hardMV': #also known as hard-MV
-        #    to_return = majority_voting(labels, probas=False, onehot=True) #aka soft-MV
-        #    prob_Yz = generate_confusionM(to_return, self.y_obs_repeat) #confusion matrix of all annotators
-        #    return to_return, prob_Yz        
-       
-
-
     def predict(self, *args):
         return self.infer(*args)
             
@@ -81,7 +118,7 @@ class LabelInference(object): #no predictive model
 
 
 class RaykarMC(object):
-    def __init__(self,input_dim,K,T,epochs=1,optimizer='adam',DTYPE_OP='float32'): #default stable parameteres
+    def __init__(self,input_dim,K,T,epochs=1,batch_size=32,optimizer='adam',DTYPE_OP='float32', init_Z='softmv'): #default stable parameteres
         if type(input_dim) != tuple:
             input_dim = (input_dim,)
         self.input_dim = input_dim
@@ -89,12 +126,16 @@ class RaykarMC(object):
         self.T = T #number of annotators
         #params:
         self.epochs = epochs
+        self.batch_size = batch_size
         self.optimizer = optimizer
         self.DTYPE_OP = DTYPE_OP
 
         self.compile=False
         self.Keps = keras.backend.epsilon()
         self.priors=False #boolean of priors
+
+        self.init_Z = init_Z.lower()
+        self.init_done = False
         
     def get_basemodel(self):
         return self.base_model
@@ -104,7 +145,7 @@ class RaykarMC(object):
     def get_qestimation(self):
         return self.Qi_gamma
 
-    def define_model(self,tipo,model,start_units=1,deep=1,double=False,drop=0.0,embed=[],BatchN=False,glo_p=False):
+    def define_model(self,tipo,model=None,start_units=1,deep=1,double=False,drop=0.0,embed=[],BatchN=False,glo_p=False):
         """Define the network of the base model"""
         self.type = tipo.lower()     
         if self.type == "keras_shallow" or 'perceptron' in self.type: 
@@ -166,18 +207,22 @@ class RaykarMC(object):
         self.Mpriors = priors
         self.priors = True
         
-    def init_E(self,X,y_ann):
-        start_time = time.time()
-        self.N = X.shape[0]
+    def init_E(self,y_ann, method=""): #Majority voting start
+        print("Initializing new EM...")
+        self.N = y_ann.shape[0]
         #init p(z|x)
-        mv_probs = majority_voting(y_ann,repeats=False,probas=True) #Majority voting start
+        if method == "":
+            method = self.init_Z
+        label_A = LabelAggregation(scenario="individual")
+        init_GT = label_A.infer(y_ann, method=method, onehot=True)
+        #mv_probs = majority_voting(y_ann,repeats=False,probas=True) 
         #init betas
         self.betas = np.zeros((self.T,self.K,self.K),dtype=self.DTYPE_OP)
         #init qi
-        self.Qi_gamma = mv_probs
+        self.Qi_gamma = init_GT
         print("Betas shape: ",self.betas.shape)
         print("Q estimate shape: ",self.Qi_gamma.shape)
-        self.init_exectime = time.time()-start_time
+        self.init_done=True
                 
     def E_step(self,X,y_ann,predictions=[]):
         if len(predictions)==0:
@@ -210,13 +255,12 @@ class RaykarMC(object):
     def compute_logL(self):#,yo,predictions):
         return np.sum( np.log( self.sum_unnormalized_q +self.Keps))
         
-    def train(self,X_train,yo_train,batch_size=64,max_iter=500,relative=True,val=False,tolerance=1e-2):   
+    def train(self,X_train,yo_train,max_iter=500,relative=True,tolerance=3e-2):   
         if not self.compile:
             print("You need to create the model first, set .define_model")
             return
-        print("Initializing new EM...")
-        self.init_E(X_train,yo_train)
-        self.batch_size = batch_size
+        if not self.init_done:
+            self.init_E(yo_train)
 
         logL = []
         stop_c = False
@@ -240,8 +284,6 @@ class RaykarMC(object):
                 tol2 = np.mean(np.abs(self.betas.flatten()-old_betas)/(old_betas+self.Keps))
                 print("Tol1: %.5f\tTol2: %.5f\t"%(tol,tol2),end='',flush=True)
             old_betas = self.betas.flatten() 
-            if val:
-                print("F1: %.4f"%(f1_score(Z_train,predictions.argmax(axis=-1),average='micro')),end='',flush=True)
             self.current_iter+=1
             print("")
             if self.current_iter>max_iter or (tol<=tolerance and tol2<=tolerance):
@@ -249,14 +291,14 @@ class RaykarMC(object):
         print("Finished training")
         return logL
             
-    def stable_train(self,X,y_ann,batch_size=64,max_iter=50,tolerance=1e-2):
+    def stable_train(self,X,y_ann,max_iter=50,tolerance=3e-2):
         self.define_priors('laplace') #cada anotadora dijo al menos una clase
-        logL_hist = self.train(X,y_ann,batch_size=batch_size,max_iter=max_iter,relative=True,val=False,tolerance=tolerance)
+        logL_hist = self.train(X,y_ann,max_iter=max_iter,relative=True,tolerance=tolerance)
         return logL_hist
     
-    def multiples_run(self,Runs,X,y_ann,batch_size=64,max_iter=50,tolerance=1e-2):  #tolerance can change
+    def multiples_run(self,Runs,X,y_ann,max_iter=50,tolerance=3e-2):  #tolerance can change
         if Runs==1:
-            return self.stable_train(X,y_ann,batch_size=batch_size,max_iter=max_iter,tolerance=tolerance), 0
+            return self.stable_train(X,y_ann,max_iter=max_iter,tolerance=tolerance), 0
         self.define_priors('laplace') #cada anotadora dijo al menos una clase
      
         found_betas = []
@@ -273,12 +315,13 @@ class RaykarMC(object):
             self.base_model = obj_clone.get_model() #reset-weigths            
             self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
 
-            logL_hist = self.train(X,y_ann,batch_size=batch_size,max_iter=max_iter,relative=True,tolerance=tolerance) 
+            logL_hist = self.train(X,y_ann,max_iter=max_iter,relative=True,tolerance=tolerance) 
             found_betas.append(self.betas.copy())
             found_model.append(self.base_model.get_weights()) #revisar si se resetean los pesos o algo asi..
             found_logL.append(logL_hist)
             iter_conv.append(self.current_iter-1)
             
+            self.init_done = False
             del self.base_model
             keras.backend.clear_session()
             gc.collect()
@@ -290,8 +333,11 @@ class RaykarMC(object):
         self.base_model = obj_clone.get_model() #change
         self.base_model.set_weights(found_model[indexs_sort[0]])
         self.E_step(X,y_ann,predictions=self.get_predictions(X)) #to set up Q
-        print("Multiples runs over Raykar, Epochs to converge= ",np.mean(iter_conv))
+        print(Runs," runs over Raykar, Epochs to converge= ",np.mean(iter_conv))
         return found_logL,indexs_sort[0]
+
+    def fit(self,X,Y, runs = 1, max_iter=50, tolerance=3e-2):
+        return self.multiples_run(runs,X,Y,max_iter=max_iter,tolerance=tolerance)
 
     def get_predictions_annot(self,X,data=[]):
         """ Predictions of all annotators , p(y^o | xi, t) """
@@ -308,6 +354,7 @@ class RaykarMC(object):
         return conf_M #do something with it
     
     
+
 #from .crowd_layers import CrowdsClassification, MaskedMultiCrossEntropy, MaskedMultiCrossEntropy_Reg
 class RodriguesCrowdLayer(object):
     def __init__(self, input_dim, Kl, T, epochs=1, optimizer='adam',DTYPE_OP='float32'): #default stable parameteres

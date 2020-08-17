@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from scipy.stats import entropy
+from .evaluation import *
 
 def get_confusionM(pred,y_obs):
     """
@@ -90,42 +90,29 @@ def softmax(Xs):
         values.append(e_x / e_x.sum())
     return np.asarray(values)
 
-def calculate_JS_comp(matrixs, based="JS"):
-    """ Calculate inertia of all the confusion matrixs"""
+def calculate_JS_comp(conf_matrices, based="JS"):
+    """ Calculate inertia of all the confusion conf_matrices"""
     if based.lower() == "js":
         D = D_JS #based on Jensen-Shannon Divergence
     elif based.lower() == "normf":
         D = D_NormF #based on Norm Frobenius
 
     value = []
-    for m1 in range(matrixs.shape[0]):
-        for m2 in range(m1+1,matrixs.shape[0]):
-            value.append(D(matrixs[m1],matrixs[m2]))
+    for m1 in range(conf_matrices.shape[0]):
+        for m2 in range(m1+1,conf_matrices.shape[0]):
+            value.append(D(conf_matrices[m1],conf_matrices[m2]))
     return np.mean(value)
 
-def calculate_R_mean(conf_matrix): #weight?
-    """Calculate the Mean of the diagional of the confusion matrixs"""
-    return np.mean([conf_matrix[l,l] for l in range(len(conf_matrix)) ])
+def calculate_R_mean(conf_matrix, *args):
+    return R_mean(conf_matrix, *args)
 
-def calculate_S_score(conf_matrix):
-    """Mean - off diagonal: based on Raykar logits"""
-    return np.mean([conf_matrix[l,l]- np.mean(np.delete(conf_matrix[:,l],l)) for l in range(len(conf_matrix))])
+def calculate_S_score(conf_matrix, *args):
+    return S_score(conf_matrix, *args)
 
-def calculate_S_bias(conf_matrix, mode="simple"):
-    """Score to known if p(y|something) == p(y) """
-    p_y = conf_matrix.mean(axis=0) #prior anotation
-    if mode=="entropy":        
-        return entropy(p_y)
-    elif mode == "median":
-        return (p_y.max() - np.median(p_y)), p_y.argmax()
-    elif mode == "simple":
-        return p_y.max(), p_y.argmax() 
-    #elif mode == "mean": #not so good
-    #    return p_y.max() - p_y.mean()
-    #elif mode =="real":
-    #return np.mean([conf_matrix[l,:] - np.mean(np.delete(conf_matrix[l,:],l))  for l in range(len(conf_matrix))] )
+def calculate_S_bias(conf_matrix, *args):
+    return S_bias(conf_matrix, *args)
 
-def calculate_D_KL(confs_pred,confs_true):
+def calculate_D_KL(confs_true, confs_pred):
     M_p = confs_pred.shape[0] #number of matrices on pred
     M_t = confs_true.shape[0] #number of matrices on true
     Kls = np.zeros(M_t)
@@ -136,7 +123,7 @@ def calculate_D_KL(confs_pred,confs_true):
     else:
         print("ERROR! There are %d real and %d predicted conf matrices"%(M_t,M_p))
 
-def calculate_D_JS(confs_pred,confs_true):
+def calculate_D_JS(confs_true, confs_pred):
     M_p = confs_pred.shape[0] #number of matrices on pred
     M_t = confs_true.shape[0] #number of matrices on true
     JSs = np.zeros(M_t)
@@ -147,7 +134,7 @@ def calculate_D_JS(confs_pred,confs_true):
     else:
         print("ERROR! There are %d real and %d predicted conf matrices"%(M_t,M_p))
 
-def calculate_D_NormF(confs_pred,confs_true):
+def calculate_D_NormF(confs_true, confs_pred):
     M_p = confs_pred.shape[0] #number of matrices on pred
     M_t = confs_true.shape[0] #number of matrices on true
     NormFs = np.zeros(M_t)
@@ -192,37 +179,6 @@ def compare_conf_mats(pred_conf_mat,true_conf_mat=[], text=False):
         #plt.xlabel('Observed label')
     plt.tight_layout()
     plt.show()
-
-def D_KL(conf_pred,conf_true, raw=False):
-    """
-        * mean of KL between rows of confusion matrix: 1/K sum_z KL_y(p(y|z)|q(y|z))
-    """ 
-    conf_pred = np.clip(conf_pred,1e-7,1.)
-    conf_true = np.clip(conf_true,1e-7,1.)
-    to_return = np.asarray([entropy(conf_true[j_z,:], conf_pred[j_z,:]) for j_z in range(conf_pred.shape[0])])
-    if not raw:
-        return np.mean(to_return)
-    return to_return
-
-def D_JS(conf_pred,conf_true, raw=False):
-    """
-        * Jensen-Shannon Divergence between rows of confusion matrix (arithmetic average)
-    """
-    conf_pred = np.clip(conf_pred,1e-7,1.)
-    conf_true = np.clip(conf_true,1e-7,1.)
-    aux = 0.5*conf_pred + 0.5*conf_true
-    return (0.5*D_KL(aux,conf_pred,raw) + 0.5*D_KL(aux,conf_true,raw))/np.log(2) #value between 0 and 1
-    
-def D_NormF(conf_pred,conf_true):
-    distance = conf_pred-conf_true
-    return np.sqrt(np.sum(distance**2))/distance.shape[0]
-    
-def H_conf(conf_ma):
-    """
-        * Mean of entropy on rows of confusion matrix: mean H(q(y|z))
-    """
-    return np.mean([entropy(conf_ma[j_z]) for j_z in range(conf_ma.shape[0])])
-
 
 class EarlyStopRelative(keras.callbacks.Callback):
     def __init__(self,
