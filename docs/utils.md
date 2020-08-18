@@ -6,7 +6,7 @@ Function to use in the crowdsourcing scenario
 
 -----
 ### Get Individual matrices
-> ```python
+```python
 codeE.utils.generate_Individual_conf(Z_data, annotations, DTYPE_OP='float32')
 ```
 To generate the individual confusion matrix of multiple annotators
@@ -26,7 +26,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 The $ \beta_{k,j}^{(t)}$
 
 ##### Examples
-> ```python
+```python
 import numpy as np
 import keras
 N = 100 #data
@@ -41,7 +41,7 @@ generate_Individual_conf(Z, Y_ohv)
 
 ---
 ### Get Global matrix
-> ```python
+```python
 codeE.utils.generate_Global_conf(Z_data, annotations, DTYPE_OP='float32')
 ```
 
@@ -62,7 +62,7 @@ The $ \beta_{k,j}$
 
 
 ##### Examples
-> ```python
+```python
 import numpy as np
 N = 100 #data
 K = 8 #classes
@@ -71,7 +71,7 @@ R = np.random.randint(3, size=(N,K))
 from codeE.utils import generate_Global_conf
 generate_Global_conf(Z, R)
 ```
-to visualize you can use
+> To visualize you can use
 ```python
 from codeE.utils import plot_confusion_matrix
 plot_confusion_matrix(generate_Global_conf(Z, R), title= "Global Matrix")

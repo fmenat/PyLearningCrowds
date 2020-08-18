@@ -6,10 +6,9 @@ Function to change representation in the crowdsourcing scenario
 
 ---
 ### Transform representation 
-> ```python
+```python
 codeE.representation.set_representation(y_obs, needed="onehot")
 ```
-
 Change representation on crowdsourcing scenario.
 
 **Parameters**  
@@ -32,13 +31,14 @@ The seted representation.
 
 > 'global': *(n_samples, n_classes)*  
 
-> 'onehotvar' or 'variable': *(n_samples,) of array-like of shape (n_annotations(i),n_classes)*
-* Besides an array of same dimensions with the identifier of each annotator
+> 'onehotvar' or 'variable': *(n_samples,) of arrays of shape (n_annotations(i), n_classes)*
+> * **identity_annotations: *same shape as new_annotations***  
+ The identifier of each annotator is returned as well, $(\mathcal{L}_i, \mathcal{A}_i)$
 
 
 ---
 ### Transform function auxiliar
-> ```python
+```python
 codeE.representation.list_to_global(list_ann, K)
 ```
 
