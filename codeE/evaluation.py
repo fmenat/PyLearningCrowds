@@ -37,7 +37,7 @@ def D_JS(conf_true, conf_pred, raw=False):
         * Jensen-Shannon Divergence between rows of confusion matrix (arithmetic average)
     """             
     aux = (conf_pred + conf_true)/2.
-    return (D_KL(conf_pred, aux, raw) + D_KL(conf_true, aux, raw))/(2*np.log(2)) #value between 0 and 1
+    return (D_KL(conf_pred, aux, raw) + D_KL(conf_true, aux, raw))/(2*np.log(2)) 
     
 def D_NormF(conf_true, conf_pred):
     distance = conf_pred-conf_true
@@ -50,11 +50,18 @@ def Individual_D(confs_true, confs_pred, D):
         res += D(confs_true[t], confs_pred[t])
     return res/T
     
+
+def I_sim(conf_ma, D=D_JS):
+    I = np.identity(len(conf_ma))
+    return 1 - D(conf_ma, I)
+
 def H_conf(conf_ma):
     """
         * Mean of entropy on rows of confusion matrix: mean H(q(y|z))
     """
-    return np.mean([entropy(conf_ma[j_z]) for j_z in range(conf_ma.shape[0])])
+    conf_ma = np.clip(conf_ma, 1e-7, 1.)
+    K = len(conf_ma)
+    return np.mean([entropy(conf_ma[j_z]) for j_z in range(K)])/np.log(K)
 
 def S_bias(conf_ma):
     """Score to known if p(y|something) == p(y) """
