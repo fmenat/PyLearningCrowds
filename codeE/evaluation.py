@@ -25,8 +25,8 @@ def D_KL(conf_true, conf_pred, raw=False):
     """
         * mean of KL between rows of confusion matrix: 1/K sum_z KL_y(p(y|z)|q(y|z))
     """ 
-    conf_pred = np.clip(conf_pred,1e-7,1.)
-    conf_true = np.clip(conf_true,1e-7,1.)
+    conf_pred = np.clip(conf_pred, 1e-7, 1.)
+    conf_true = np.clip(conf_true, 1e-7, 1.)
     to_return = np.asarray([entropy(conf_true[j_z,:], conf_pred[j_z,:]) for j_z in range(conf_pred.shape[0])])
     if not raw:
         return np.mean(to_return)
@@ -35,15 +35,20 @@ def D_KL(conf_true, conf_pred, raw=False):
 def D_JS(conf_true, conf_pred, raw=False):
     """
         * Jensen-Shannon Divergence between rows of confusion matrix (arithmetic average)
-    """
-    conf_pred = np.clip(conf_pred,1e-7,1.)
-    conf_true = np.clip(conf_true,1e-7,1.)
-    aux = 0.5*conf_pred + 0.5*conf_true
-    return (0.5*D_KL(aux,conf_pred,raw) + 0.5*D_KL(aux,conf_true,raw))/np.log(2) #value between 0 and 1
+    """             
+    aux = (conf_pred + conf_true)/2.
+    return (D_KL(conf_pred, aux, raw) + D_KL(conf_true, aux, raw))/(2*np.log(2)) #value between 0 and 1
     
 def D_NormF(conf_true, conf_pred):
     distance = conf_pred-conf_true
     return np.sqrt(np.sum(distance**2))/distance.shape[0]
+
+def Individual_D(confs_true, confs_pred, D):
+    T = len(confs_true)
+    res = 0
+    for t in range(T):
+        res += D(confs_true[t], confs_pred[t])
+    return res/T
     
 def H_conf(conf_ma):
     """

@@ -141,9 +141,9 @@ class RaykarMC(object):
         return self.base_model
     def get_confusionM(self):
         """Get confusion matrices of every annotator p(yo^t|,z)"""  
-        return self.betas
+        return self.betas.copy()
     def get_qestimation(self):
-        return self.Qi_gamma
+        return self.Qi_gamma.copy()
 
     def define_model(self,tipo,model=None,start_units=1,deep=1,double=False,drop=0.0,embed=[],BatchN=False,glo_p=False):
         """Define the network of the base model"""
@@ -215,7 +215,6 @@ class RaykarMC(object):
             method = self.init_Z
         label_A = LabelAggregation(scenario="individual")
         init_GT = label_A.infer(y_ann, method=method, onehot=True)
-        #mv_probs = majority_voting(y_ann,repeats=False,probas=True) 
         #init betas
         self.betas = np.zeros((self.T,self.K,self.K),dtype=self.DTYPE_OP)
         #init qi
@@ -333,7 +332,7 @@ class RaykarMC(object):
         self.base_model = obj_clone.get_model() #change
         self.base_model.set_weights(found_model[indexs_sort[0]])
         self.E_step(X,y_ann,predictions=self.get_predictions(X)) #to set up Q
-        print(Runs," runs over Raykar, Epochs to converge= ",np.mean(iter_conv))
+        print(Runs,"runs over Raykar, Epochs to converge= ",np.mean(iter_conv))
         return found_logL,indexs_sort[0]
 
     def fit(self,X,Y, runs = 1, max_iter=50, tolerance=3e-2):

@@ -1,5 +1,6 @@
 import numpy as np
 import keras
+
 def categorical_representation(obs,no_label =-1):
     """Representation of one hot vectors, (N,T,K), masked with 0 """
     N,T = obs.shape
@@ -56,7 +57,7 @@ def get_A_il(array, A=[],T=0, index=False):
         A_train.append(A_i)
     return np.asarray(A_train), A
 
-def annotations2repeat(annotations):
+def annotations2global(annotations):
     """
     assuming that annotations is a 3-dimensional array and with one hot vectors, and annotators
     that does not annotate a data have a one hot vectors of zeroes --> sum over annotators axis
@@ -65,55 +66,43 @@ def annotations2repeat(annotations):
     	annotations = categorical_representation(annotations)
     return np.sum(annotations,axis=1,dtype='int32')
 
-def annotations2repeat_efficient(obs,no_label=-1):
+def annotations2global_efficient(obs,no_label=-1):
 	"""
-	Used when memory error is through over normal "annotations2repeat" function
+	Used when memory error is through over normal "annotations2global" function
 	"""
 	if len(obs.shape) ==1: #variable number of annotations
 		N = obs.shape[0]
 		K = obs[0].shape[1]
-		repeats_obs = np.zeros((N,K),dtype='int32')
+		globals_obs = np.zeros((N,K),dtype='int32')
 		for i in range(N):
-		    repeats_obs[i] = obs[i].sum(axis=0)
+		    globals_obs[i] = obs[i].sum(axis=0)
 	elif len(obs.shape) ==2:
 		N, T = obs.shape
 		K = int(np.max(obs)+1) # assuming that are indexed in order
-		repeats_obs = np.zeros((N,K),dtype='int32')
+		globals_obs = np.zeros((N,K),dtype='int32')
 		for i in range(N):
 			A_i = np.where(obs[i] != no_label)[0]
 			for t in A_i:
-				repeats_obs[i,obs[i,t]] +=1
+				globals_obs[i,obs[i,t]] +=1
 	else:
-		repeats_obs = np.sum(obs,axis=1,dtype='int32')
-	return repeats_obs
+		globals_obs = np.sum(obs,axis=1,dtype='int32')
+	return globals_obs
 
-"""
- REEEEEEEEEESCRIBIR
-
-Original/Based representation: (N,T)
-Example: X = [  [1, 2,-1, 2,-1]
-				[1,-1, 2,-1, 1] ]
-
-Raykar need as one-hot: (N,T,K)
-SET:  set_representation(X,needed="onehot")
-
-Group-based Model Global need repeats: (N,K)
-SET:  set_representation(X,needed="repeat")
-
-Group-based Model Individual need variable lenth: (N,T_i,K)
-SET:  set_representation(X,needed="onehotvar")
-
-Group-based Model Individual need annotator identity: (N,T_i,R_t), (T,R_t)
-SET Option1: A_train, A = get_A_il(X, T=T) 
-SET Option2: A_train, A = get_A_il(X, A=A) #if you already  had a representation for annotators
-"""
-
-def set_representation(obs, needed="onehot"):
+def list_to_global(list_ann, K):
+    N = len(list_ann)
+    r_obs = np.zeros((N,K))
+    for i, annotations in enumerate(list_ann):
+        annotations = np.asarray(annotations)
+        for j in range(K):
+            r_obs[i,j] = np.sum(annotations == j)
+    return r_obs    
+    
+def set_representation(y_obs, needed="onehot"):
     if needed.lower()=="onehot" or needed.lower()=="one-hot":
-        return categorical_representation(obs)
+        return categorical_representation(y_obs)
     elif needed.lower()=="global":
-        return annotations2repeat_efficient(obs)
+        return annotations2global_efficient(y_obs)
     elif needed.lower()=='onehotvar' or needed.lower()=='variable':
-        return categorical_var_representation(obs)
+        return categorical_var_representation(y_obs)
     elif needed.lower()=='onehotmasked' or needed.lower()=='rodriguesmasked':
-        return categorical_masked_representation(obs)
+        return categorical_masked_representation(y_obs)

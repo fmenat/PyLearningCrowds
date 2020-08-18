@@ -7,57 +7,51 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from .evaluation import *
 
-def get_confusionM(pred,y_obs):
-    """
-        * pred is prediction probabilities or one hot, p(z=gamma|x)
-        * y_obs is annotator probabilities shape is (N,T,K)
-    """
-    aux = np.tensordot(pred, y_obs, axes=[[0],[0]]).transpose(1,0,2)
-    return aux/np.sum(aux, axis=-1)[:,:,None] #normalize
+#def get_confusionM(pred,y_obs):
+#    """
+#        * pred is prediction probabilities or one hot, p(z=gamma|x)
+#        * y_obs is annotator probabilities shape is (N,T,K)
+#    """
+#    aux = np.tensordot(pred, y_obs, axes=[[0],[0]]).transpose(1,0,2)
+#    return aux/np.sum(aux, axis=-1)[:,:,None] #normalize
 
-def generate_Individual_conf(Z_data, y_obs, no_label=-1, K=0, DTYPE_OP='float32'):
-    # REVISAR SIS EP UEDE PARALELIZAR
-    N, T = y_obs.shape
-    if K == 0:
-        K = np.max(y_obs) +1
+def generate_Individual_conf(Z_data, annotations, DTYPE_OP='float32'):
+    if len(Z_data.shape) == 1:
+        K = np.max(Z_data)+1
+        Z_data = keras.utils.to_categorical(Z_data, num_classes=K)
+    elif len(Z_data.shape) != 2:
+        raise Exception('The len(shape) of Z value has to be 1 or 2')
 
-    aux = np.zeros((T,K,K),dtype=DTYPE_OP) 
-    for t in range(T):    
-        for i in range(N):
-            if y_obs[i,t] != no_label:
-                aux[t,Z_data[i],y_obs[i,t]] +=1
-                
-        mask_nan = aux[t,:,:].sum(axis=-1) == 0
-        for value in np.arange(K)[mask_nan]:
-            #how to fill where she not annotate?? -- 
-            aux[t,value,:] =  1 #-- similar  to laplace smooth (prior 1)
-        aux[t,:,:] = aux[t,:,:]/aux[t,:,:].sum(axis=-1,keepdims=True) #normalize
+    aux = np.tensordot(Z_data, annotations, axes=[[0], [0]] ).astype(DTYPE_OP)
+    aux = aux.transpose([1,0,2])
+    mask_nan = aux.sum(axis=-1) == 0
+    aux[mask_nan] = 1 #-- similar  to laplace smooth (prior 1)
+    aux = aux/aux.sum(axis=-1, keepdims=True)
     return aux
 
-def generate_Global_conf(Z_data,y_obs):
-    """ This function calculate the confusion matrix amongs all the annotations for every data. """  
-    #hacerlo para ambas representaciones..
-
-    if len(Z_data.shape) == 2:
-        aux = np.tensordot(Z_data, y_obs, axes=[[0],[0]])
-    elif len(Z_data.shape) ==1:
-        Kl = max(Z_data.max()+1, y_obs.shape[1])
-        aux = np.tensordot(keras.utils.to_categorical(Z_data, num_classes=Kl), y_obs, axes=[[0],[0]])
-    else:
+def generate_Global_conf(Z_data, annotations, DTYPE_OP='float32'):
+    """ This function calculate the confusion matrix amongs all the annotations for every data. """          
+    if len(Z_data.shape) == 1:
+        K = np.max(Z_data)+1
+        Z_data = keras.utils.to_categorical(Z_data, num_classes=K)
+    elif len(Z_data.shape) != 2:
         raise Exception('The len(shape) of Z value has to be 1 or 2')
-        
-    if len(aux.shape) == 3: #if y_obs_categorical is delivered
+    
+    aux = np.tensordot(Z_data, annotations, axes=[[0],[0]]).astype(DTYPE_OP)
+    if len(aux.shape) == 3: #if individual representation
         aux = aux.sum(axis=1)
     return aux/aux.sum(axis=-1,keepdims=True) #normalize
 
 def generate_confusionM(*args):
     return generate_Global_conf(*args)
 
-def plot_confusion_matrix(conf, classes,title="Estimated",text=True):
+def plot_confusion_matrix(conf, classes=[],title="Estimated",text=True):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
     """
+    if len(classes)==0:
+        classes = np.arange(len(conf[0]))
     plt.imshow(conf, interpolation='nearest', cmap=cm.YlOrRd, vmin=0, vmax=1)
     if text:
         plt.colorbar()
