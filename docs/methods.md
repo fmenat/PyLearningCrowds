@@ -4,6 +4,8 @@ from codeE.methods import ...
 ```
 Methods proposed in the crowdsourcing scenario, also called learning from crowds.
 
+To problem notation see...
+
 LINKS INICIAL A CADA METODO Y DE CADA METODO ACA AL INICIO...
 
 ---
@@ -15,7 +17,6 @@ class codeE.methods.LabelAggregation(scenario="global")
 Methods that reduced the multiple annotations *y* to a single target for each input pattern *x*. The goal is to define a ground truth *z* as a function of the annotations, for example summary statistic such as the mean, the median or the mode. 
 
 The most used and simple technique corresponds to Majority Voting (MV) [1], which can handle both scenario setting, individual or global.
-
 
 **Parameters**  
 * **scenario: *string, {'global','individual'}, default='global'***  
@@ -113,14 +114,13 @@ same operation than infer function.
 class codeE.methods.LabelInference_EM(init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32')
 ```
 
-Method that infers the ground truth label with a probabilistic framework based on the EM algorithm [1]. It represent the annotators ability as a confusion matrix to detect the ground truth 
-$$ \beta_{k,j}^{(t)} = p(y=j | z=k, a=t) $$
+Method that infers the ground truth label with a probabilistic framework based on the EM algorithm [1]. It represent the annotators ability as a confusion matrix to detect the ground truth <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = p(y=j | z=k, a=t) ">
 
 This method is proposed on the framework of Dawid and Skene (D&S) [2].
 
 **Parameters**  
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: $q_i(z=k)=p(z=k|i)$. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAggregation class. 
 * **priors: *different options***  
 The priors to be set on the confusion matrices of annotators, could be in different formats:
 	* *string, {'laplace','none'}*  
@@ -132,9 +132,10 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	* *array-like of shape (n_annotators, n_classes)*  
 	A matrix of the number of annotations to be set priors for every annotator and every ground truth label on the data.
 	* *array-like of shape (n_annotators, n_classes, n_classes)*  
-	A cube with the number of annotations to be set priors for every annotator, every ground truth label and every observed label on the data. 
+	A cube with the number of annotations to be set priors for every annotator, every ground truth label and every observed label on the data. priors=
+	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **fast: *boolean, default=False***  
-If the fast estimation of the method is used. This correspond to perform a discrete/hard estimation of the ground truth label, after E step. Based on REFERENCIA
+If the fast estimation of the method is used. This correspond to perform a discrete/hard estimation of the ground truth label, after E step. According to Sinha et al. [4] accelerates convergence (*reduce the number of iterations to convergence*).
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
@@ -144,7 +145,8 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### References
 [1] [Dempster, A. P., Laird, N. M., & Rubin, D. B. (1977). *Maximum likelihood from incomplete data via the EM algorithm*](http://www.eng.auburn.edu/~troppel/courses/7970%202015A%20AdvMobRob%20sp15/literature/paper%20W%20refs/dempster%20EM%201977.pdf)  
 [2] [Dawid, A. P., & Skene, A. M. (1979). *Maximum likelihood estimation of observer error‐rates using the EM algorithm*](http://crowdsourcing-class.org/readings/downloads/ml/EM.pdf)  
-[3] [Smyth, P., Fayyad, U. M., Burl, M. C., Perona, P., & Baldi, P. (1995). *Inferring ground truth from subjective labelling of venus images.*](http://papers.nips.cc/paper/949-inferring-ground-truth-from-subjective-labelling-of-venus-images.pdf)
+[3] [Smyth, P., Fayyad, U. M., Burl, M. C., Perona, P., & Baldi, P. (1995). *Inferring ground truth from subjective labelling of venus images.*](http://papers.nips.cc/paper/949-inferring-ground-truth-from-subjective-labelling-of-venus-images.pdf)  
+[4] [Sinha, V. B., Rao, S., & Balasubramanian, V. N. (2018). Fast Dawid-Skene: *A Fast Vote Aggregation Scheme for Sentiment Classification*](https://arxiv.org/pdf/1803.02781)
 
 
 ##### Examples
@@ -195,21 +197,21 @@ get_marginalZ()
 ```
 **Returns**  
 * **z_marginal: *array-like of shape (n_classes,)***  
-The parameter used as marginal probability of the ground truth $p(z=k)$
+The parameter used as marginal probability of the ground truth <img src="https://render.githubusercontent.com/render/math?math=p(z=k)">
 
 ```python
 get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_annotators, n_classes, n_classes)***  
-The confusion matrix of each annotator $\beta_{k,j}^{(t)}$
+The confusion matrix of each annotator <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)}">
 
 ```python
 get_qestimation()
 ```
 **Returns**  
 * **Qi_k: *array-like of shape (n_samples, n_classes)***  
-The estimation over auxiliar variable $Q$
+The estimation over auxiliar variable *Q*
 
 ```python
 set_priors(priors)
@@ -221,13 +223,13 @@ set_priors(priors)
 init_E(y_ann, method="")
 ```
 Initialization of the E-step based on *method*.  
-$$q_i(z=k) = p(z=k | x_i) = p(z=k|x_i) $$
+<img src="https://render.githubusercontent.com/render/math?math=q_i(z=k) = p(z=k | i)">
 
 **Parameters**  
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: $p(z=k|i)$. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k | i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
 
 ```python
 E_step(y_ann)
@@ -296,13 +298,14 @@ same operation than infer function.
 class codeE.methods.ModelInference_EM(init_Z='softmv', n_init_Z=0, priors=0, DTYPE_OP='float32')
 ```
 
-This method set a predictive model $f(x)$ of the ground truth inside the inference for joint learning. It also represent the annotators ability as a confusion matrix $$ \beta_{k,j}^{(t)} = p(y=j | z=k, a=t) $$ and allows any model on *f()*.
+This method set a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)">
+ of the ground truth inside the inference for joint learning. It also represent the annotators ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = p(y=j | z=k, a=t)"> and allows any model on *f()*.
 
 The original idea was proposed by Raykar et al. [1]
 
 **Parameters**  
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: $q_i(z=k)=p(z=k|i)$. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=q_i(z=k)=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. 
 * **n_init_Z: *int, default=0***  
 The number of epochs that the predictive model is going to be pre-trained.
 * **priors: *different options***  
@@ -317,6 +320,7 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	A matrix of the number of annotations to be set priors for every annotator and every ground truth label on the data.
 	* *array-like of shape (n_annotators, n_classes, n_classes)*  
 	A cube with the number of annotations to be set priors for every annotator, every ground truth label and every observed label on the data. 
+	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
@@ -387,21 +391,21 @@ get_basemodel()
 ```
 **Returns**  
 * **base_model: *function or class***  
-The predictive model over the ground truth $f(\cdot)$
+The predictive model over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f(\cdot)">
 
 ```python
 get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_annotators, n_classes, n_classes)***  
-The confusion matrix of each annotator $\beta_{k,j}^{(t)}$
+The confusion matrix of each annotator <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)}">
 
 ```python
 get_qestimation()
 ```
 **Returns**  
 * **Qi_k: *array-like of shape (n_samples, n_classes)***  
-The estimation over auxiliar variable $Q$
+The estimation over auxiliar variable *Q*
 
 ```python
 set_model(model, optimizer="adam", epochs=1, batch_size=32)
@@ -428,13 +432,13 @@ set_priors(priors)
 init_E(y_ann, method="")
 ```
 Initialization of the E-step based on *method*.  
-$$q_i(z=k) = p(z=k | x_i) = p(z=k|x_i) $$
+<img src="https://render.githubusercontent.com/render/math?math=q_i(z=k) = p(z=k|x_i)">
 
 **Parameters**  
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: $p(z=k|i)$. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
 
 ```python
 E_step(X, y_ann, predictions=[])
@@ -499,6 +503,12 @@ The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
 The maximus difference on the parameters and loss between  the iterations to train.
 
+**Returns**  
+* **found_logL: *list of length=Runs***  
+A list with the history of log-likelihood for each iteration in the different runs
+* **best_run: *int***  
+The index of the best run between all executed, a number between *0* and *Runs-1*.
+
 
 ```python
 fit(X,Y, runs = 1, max_iter=50, tolerance=3e-2)
@@ -515,7 +525,7 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set $f(x) = p(z|x)$
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
 
 ```python
 get_predictions_annot(X, data=[])
@@ -529,7 +539,7 @@ If the probability predictions of the ground truth over some set are delivered
 
 **Returns**  
 * **prob_Y_xt: *array-like of shape (n_samples, n_annotators, n_classes)***  
-The probability estimation of labels over some set for each annotator $p(y|x, t)$.
+The probability estimation of labels over some set for each annotator <img src="https://render.githubusercontent.com/render/math?math=p(y|x, t) = \sum_{z} p(y|z,t) p(z|x) ">.
 
 ---
 ### NOMRBE : Model Inference based on EM - Confusion Matrix
@@ -538,7 +548,7 @@ class codeE.methods.NOMBRE(M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='f
 ```
 CAMBIAR NOMBRE A ALGO COMO MODELINFENRECE_EM_GROUPS
 
-This method infer a predictive model $f(x)$ of the ground truth jointly with the ground truth inference based on groups over the data annotations. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix $$ \beta_{k,j}^{(m)} = p(y=j | z=k, g=m) $$ and allows any model on *f()*.
+This method infer a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> of the ground truth jointly with the ground truth inference based on groups over the data annotations. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)} = p(y=j | z=k, g=m)"> and allows any model on *f()*.
 
 The original CMM (*Crowd Mixture Model*) method was proposed by Mena et al. [1]
 
@@ -546,7 +556,7 @@ The original CMM (*Crowd Mixture Model*) method was proposed by Mena et al. [1]
 * **M: *int***  
 The number of groups (*n_groups*) to be found (*different types of behaviors*) in the annotations.
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: $q_i(z=k)=p(z=k|i)$. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. 
 * **n_init_Z: *int, default=0***  
 The number of epochs that the predictive model is going to be pre-trained.
 * **priors: *different options***  
@@ -561,6 +571,7 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
 	* *array-like of shape (n_groups, n_classes, n_classes)*  
 	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
@@ -639,28 +650,28 @@ get_basemodel()
 ```
 **Returns**  
 * **base_model: *function or class***  
-The predictive model over the ground truth $f(\cdot)$
+The predictive model over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f(\cdot)">
 
 ```python
 get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_groups, n_classes, n_classes)***  
-The confusion matrix of each modeled group $\beta_{k,j}^{(m)}$
+The confusion matrix of each modeled group <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)}">
 
 ```python
 get_alpha()
 ```
 **Returns**  
 * **alphas: *array-like of shape (n_groups,)***  
-The presence probability vector of the modeled groups $\alpha_m$
+The presence probability vector of the modeled groups <img src="https://render.githubusercontent.com/render/math?math=\alpha_m">
 
 ```python
 get_qestimation()
 ```
 **Returns**  
 * **Qij_mk: *array-like of shape (n_samples, n_classes, n_groups, n_classes)***  
-The estimation over auxiliar model $Q$
+The estimation over auxiliar model *Q*
 
 ```python
 set_model(model, optimizer="adam", epochs=1, batch_size=32)
@@ -687,14 +698,14 @@ set_priors(priors)
 init_E(r_ann, method="")
 ```
 Initialization of the E-step, based on the following approximation:
-$$q_ij(g=m, z=k) = p(g=m, z=k | x_i, y=j) = p(g=m|x_i,y=j) p(z=k|x_i)  $$
+<img src="https://render.githubusercontent.com/render/math?math=q_{ij}(g=m, z=k) = p(g=m, z=k | x_i, y=j) = p(g=m|x_i,y=j) p(z=k|x_i)">. 
 The groups *g* initialization is based on a K-means clustering and the ground truth *z* is based on *method*.
 
 **Parameters**  
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: $p(z=k|i)$. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
 
 ```python
 E_step(X, predictions=[])
@@ -705,7 +716,7 @@ Perform the inference on the E-step.
 * **X: *array-like of shape (n_samples, ...)***  
 Input patterns of the data.
 * **predictions: *array-like of shape (n_samples, n_classes)***  
-Probability predictions of the ground truth on training set. If X is given, not necessary to give this parameter (*default=[]*).
+Probability predictions of the ground truth on training set. If *X* is given, not necessary to give this parameter (*default=[]*).
 
 ```python
 M_step(X, r_ann)
@@ -757,6 +768,11 @@ The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
 The maximus difference on the parameters and loss between  the iterations to train.
 
+**Returns**  
+* **found_logL: *list of length=Runs***  
+A list with the history of log-likelihood for each iteration in the different runs
+* **best_run: *int***  
+The index of the best run between all executed, a number between *0* and *Runs-1*.
 
 ```python
 fit(X,Y, runs = 1, max_iter=50, tolerance=3e-2)
@@ -772,14 +788,14 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set $f(x) = p(z|x)$
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
 
 ```python
 get_global_confusionM()
 ```
 **Returns**  
 * **prob_Y_Z: *array-like of shape (n_classes, n_classes)***  
-The global confusion matrix $\beta_{k,j}$
+The global confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j} = \sum_{m} \beta_{k,j}^{(m)} \cdot p(g=m)">
 
 ```python
 get_ann_confusionM(X, Y)
@@ -792,7 +808,7 @@ Annotations of some specific annotator *t*, no label symbol *=-1*
 
 **Returns**  
 * **ann_prob_Y_Z: *array-like of shape (n_classes, n_classes)***  
-The individual confusion matrix of some annotator *t*: $\beta_{k,j}^{(t)}$
+The individual confusion matrix of some annotator *t*: <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = \sum_{m} \beta_{k,j}^{(m)}\cdot  p(g=m|t)">
 
 ```python
 get_predictions_groups(X, data=[])
@@ -806,7 +822,7 @@ If the probability predictions of the ground truth over some set are delivered
 
 **Returns**  
 * **prob_Y_xg: *array-like of shape (n_samples, n_groups, n_classes)***  
-The probability estimation of labels over some set for each group $p(y|x, g)$.
+The probability estimation of labels over some set for each group <img src="https://render.githubusercontent.com/render/math?math=p(y|x, g) = \sum_z p(y|z, g) p(z|x)">.
 
 ---
 ### NOMRBE2 : Model Inference based on EM - Confusion Matrix
@@ -815,9 +831,9 @@ class codeE.methods.NOMBRE2(M, init_Z="softmv", n_init_Z=0, n_init_G=0, priors=0
 ```
 CAMBIAR NOMBRE A ALGO COMO MODELINFENRECE_EM_GROUPS
 
-This method infer a predictive model $f(x)$ of the ground truth jointly with the ground truth inference based on groups over the annotations of the annotators. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix $$ \beta_{k,j}^{(m)} = p(y=j | z=k, g=m) $$ and allows any model on *f()*.
+This method infer a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> of the ground truth jointly with the ground truth inference based on groups over the annotations of the annotators. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)} = p(y=j | z=k, g=m)"> and allows any model on *f()*.
 
-It requieres a *group model* that assign annotators *a* to groups *g*:  $ h(a)= p(g|a)$
+It requieres a *group model* that assign annotators *a* to groups *g*:  <img src="https://render.githubusercontent.com/render/math?math=h(a)= p(g|a)">
 
 The original C-MoA (*Crowd - Mixture of Annotators*) method was proposed by Mena et al. [2]
 
@@ -825,7 +841,7 @@ The original C-MoA (*Crowd - Mixture of Annotators*) method was proposed by Mena
 * **M: *int***  
 The number of groups (*n_groups*) to be found (*different types of behaviors*) in the annotations.
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: $q_i(z=k)=p(z=k|i)$. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. 
 * **n_init_Z: *int, default=0***  
 The number of epochs that the predictive model is going to be pre-trained.
 * **n_init_G: *int, default=0***  
@@ -842,6 +858,7 @@ The priors to be set on the confusion matrices of groups, could be in different 
 	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
 	* *array-like of shape (n_groups, n_classes, n_classes)*  
 	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
@@ -928,28 +945,28 @@ get_basemodel()
 ```
 **Returns**  
 * **base_model: *function or class***  
-The predictive model over the ground truth $f(\cdot)$
+The predictive model over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f(\cdot)">
 
 ```python
 get_groupmodel()
 ```
 **Returns**  
 * **group_model: *function or class***  
-The group model that assigns the annotators to group $g(\cdot)$
+The group model that assigns the annotators to group <img src="https://render.githubusercontent.com/render/math?math=h(\cdot)">
 
 ```python
 get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_groups, n_classes, n_classes)***  
-The confusion matrix of each modeled group $\beta_{k,j}^{(m)}$
+The confusion matrix of each modeled group <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)}">
 
 ```python
 get_qestimation()
 ```
 **Returns**  
 * **Qil_mk: *(n_samples,) of arrays of shape (n_annotations(i), n_groups, n_classes)***  
-The estimation over auxiliar model $Q$
+The estimation over auxiliar model *Q*
 
 ```python
 set_model(model, optimizer="adam", epochs=1, batch_size=32, ann_model=None)
@@ -991,7 +1008,7 @@ set_priors(priors)
 init_E(y_ann_var, A_idx_var, method="")
 ```
 Initialization of the E-step, based on the following approximation:
-$$q_il(g=m, z=k) = p(g=m, z=k | x_i, y_il, a_il) = p(g=m|a_il) p(z=k|x_i)  $$
+<img src="https://render.githubusercontent.com/render/math?math=q_{i\ell}(g=m, z=k) = p(g=m, z=k | x_i, y_{i}^{(\ell)}, a_{i}^{(\ell)}) = p(g=m|a_i^{(\ell)}) p(z=k|x_i) ">. 
 The groups *g* initialization is based on a K-means clustering and the ground truth *z* is based on *method*.
 
 **Parameters**  
@@ -1000,7 +1017,7 @@ Annotations of the data, should be on a categorical representation of variable l
 * **A_idx_var: *array-like of shape (n_samples,) of arrays of shape (n_annotations(i),)***  
 Identifier of the annotator of each annotations in *y_ann_var*.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: $p(z=k|i)$. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
 
 
 ```python
@@ -1076,6 +1093,11 @@ The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
 The maximus difference on the parameters and loss between  the iterations to train.
 
+**Returns**  
+* **found_logL: *list of length=Runs***  
+A list with the history of log-likelihood for each iteration in the different runs
+* **best_run: *int***  
+The index of the best run between all executed, a number between *0* and *Runs-1*.
 
 ```python
 fit(X,Y, runs = 1, max_iter=50, tolerance=3e-2)
@@ -1091,7 +1113,7 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set $f(x) = p(z|x)$
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
 
 ```python
 get_predictions_g(A)
@@ -1102,7 +1124,7 @@ The identifier of *n_annotators_pred* annotators to assign groups.
 
 **Returns**  
 * **prob_G_hat: *array-like of shape (n_annotators_pred, n_groups)***  
-The probability predictions over the groups of some annotators $g(a) = p(g|a)$
+The probability predictions over the groups of some annotators <img src="https://render.githubusercontent.com/render/math?math=h(a) = p(g|a)">
 
 ```python
 get_global_confusionM(prob_Gt)
@@ -1113,7 +1135,7 @@ Probabilities of the annotators over the groups.
 
 **Returns**  
 * **prob_Y_Z: *array-like of shape (n_classes, n_classes)***  
-The global confusion matrix $\beta_{k,j}$
+The global confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j} =\sum_m \beta_{k,j}^{(m)} \cdot p(g=m)">
 
 ```python
 get_ann_confusionM(A)
@@ -1124,7 +1146,7 @@ The identifier of *n_annotators_pred* annotators.
 
 **Returns**  
 * **prob_Y_Zt: *array-like of shape (n_annotators_pred, n_classes, n_classes)***  
-The individual confusion matrices of *n_annotators_pred* annotators: $\beta_{k,j}^{(t)}$
+The individual confusion matrices of *n_annotators_pred* annotators: <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = \sum_m \beta_{k,j}^{(m)}\cdot p(g=m|t)">
 
 ```python
 get_predictions_groups(X, data=[])
@@ -1138,4 +1160,4 @@ If the probability predictions of the ground truth over some set are delivered
 
 **Returns**  
 * **prob_Y_xg: *array-like of shape (n_samples, n_groups, n_classes)***  
-The probability estimation of labels over some set for each group $p(y|x, g)$.
+The probability estimation of labels over some set for each group <img src="https://render.githubusercontent.com/render/math?math=p(y|x, g) = \sum_z p(y|z,g ) p(z|x)">.

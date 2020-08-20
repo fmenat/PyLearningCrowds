@@ -58,7 +58,7 @@ The seted representation.
 
 > 'onehotvar' or 'variable': *(n_samples,) of arrays of shape (n_annotations(i), n_classes)*
 > * **identity_annotations: *same shape as new_annotations***  
- The identifier of each annotator is returned as well, $(\mathcal{L}_i, \mathcal{A}_i)$
+ The identifier of each annotator is returned as well, <img src="https://render.githubusercontent.com/render/math?math=(\mathcal{L}_i, \mathcal{A}_i)">
 
 
 ---

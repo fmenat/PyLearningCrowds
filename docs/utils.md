@@ -9,9 +9,8 @@ Function to use in the crowdsourcing scenario
 ```python
 codeE.utils.generate_Individual_conf(Z_data, annotations, DTYPE_OP='float32')
 ```
-To generate the individual confusion matrix of multiple annotators
-$$ \beta_{k,j}^{(t)} = p(y=j | z=k, a=t) $$
-
+To generate the individual confusion matrix of multiple annotators 
+<img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = p(y=j | z=k, a=t)">
 
 **Parameters**  
 * **Z_data: *array-like of shape (n_samples, n_classes)***  
@@ -23,7 +22,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 
 **Returns**  
 * **I_conf: *array-like of shape (n_annotators, n_classes, n_classes)***  
-The $ \beta_{k,j}^{(t)}$
+The <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)}">
 
 ##### Examples
 ```python
@@ -45,8 +44,7 @@ generate_Individual_conf(Z, Y_ohv)
 codeE.utils.generate_Global_conf(Z_data, annotations, DTYPE_OP='float32')
 ```
 
-To generate the global confusion matrix of the multiple annotations
-$$ \beta_{k,j} = p(y=j | z=k) $$
+To generate the global confusion matrix of the multiple annotations <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j} = p(y=j | z=k)">
 
 **Parameters**  
 * **Z_data: *array-like of shape (n_samples, n_classes) or (n_samples,)***  
@@ -58,7 +56,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 
 **Returns**  
 * **G_conf: *array-like of shape (n_classes, n_classes)***  
-The $ \beta_{k,j}$
+The <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}">
 
 
 ##### Examples
