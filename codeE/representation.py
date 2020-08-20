@@ -1,6 +1,25 @@
 import numpy as np
 import keras
 
+def list_to_global(list_ann, K):
+    N = len(list_ann)
+    r_obs = np.zeros((N,K))
+    for i, annotations in enumerate(list_ann):
+        annotations = np.asarray(annotations)
+        for j in range(K):
+            r_obs[i,j] = np.sum(annotations == j)
+    return r_obs    
+    
+def set_representation(y_obs, needed="onehot"):
+    if needed.lower()=="onehot" or needed.lower()=="one-hot":
+        return categorical_representation(y_obs)
+    elif needed.lower()=="global":
+        return annotations2global_efficient(y_obs)
+    elif needed.lower()=='onehotvar' or needed.lower()=='variable':
+        return categorical_var_representation(y_obs)
+    elif needed.lower()=='onehotmasked' or needed.lower()=='rodriguesmasked':
+        return categorical_masked_representation(y_obs)
+
 def categorical_representation(obs,no_label =-1):
     """Representation of one hot vectors, (N,T,K), masked with 0 """
     N,T = obs.shape
@@ -28,34 +47,13 @@ def categorical_var_representation(obs, no_label=-1):
     """Representation of one hot vectors of variable lengths, (N,T_i,K), no masked"""
     N,T = obs.shape
     K = int(np.max(obs)+1) # assuming that are indexed in order
-    y_obs_var, T_idx = [], []
+    y_obs_var, A_idx_var = [], []
     for i in range(N):
         Y_i = obs[i]
         A_i = np.where(Y_i != no_label)[0]
-        T_idx.append( A_i.astype('int32') )
+        A_idx_var.append( A_i.astype('int32') )
         y_obs_var.append( keras.utils.to_categorical( Y_i[A_i],num_classes=K).astype('int8') )
-    #if return_idx:
-    return np.asarray(y_obs_var), np.asarray(T_idx)
-    #return np.asarray(y_obs_var)
-
-def get_A_il(array, A=[],T=0, index=False):
-    """ Assigned representation for every data that the annotator labeled"""
-    if len(A) == 0:
-        if T != 0:
-            A = keras.utils.to_categorical(np.arange(T), num_classes=T) #generate A as one-hot
-        else:
-            print("ERROR! Needed to pass *T* or *A* argument")
-            return
-    R_t = A.shape[0] #dimensions to represent annotators
-    A_train = [] #set of annotators by data .. A_i
-    for i in range(array.shape[0]):
-        if index:
-            Aindx_i = array[i]
-        else:
-            Aindx_i = np.where(array[i] !=-1)[0] #get indexs
-        A_i = A[Aindx_i] #get representation at indexs
-        A_train.append(A_i)
-    return np.asarray(A_train), A
+    return np.asarray(y_obs_var), np.asarray(A_idx_var)
 
 def annotations2global(annotations):
     """
@@ -87,22 +85,3 @@ def annotations2global_efficient(obs,no_label=-1):
 	else:
 		globals_obs = np.sum(obs,axis=1,dtype='int32')
 	return globals_obs
-
-def list_to_global(list_ann, K):
-    N = len(list_ann)
-    r_obs = np.zeros((N,K))
-    for i, annotations in enumerate(list_ann):
-        annotations = np.asarray(annotations)
-        for j in range(K):
-            r_obs[i,j] = np.sum(annotations == j)
-    return r_obs    
-    
-def set_representation(y_obs, needed="onehot"):
-    if needed.lower()=="onehot" or needed.lower()=="one-hot":
-        return categorical_representation(y_obs)
-    elif needed.lower()=="global":
-        return annotations2global_efficient(y_obs)
-    elif needed.lower()=='onehotvar' or needed.lower()=='variable':
-        return categorical_var_representation(y_obs)
-    elif needed.lower()=='onehotmasked' or needed.lower()=='rodriguesmasked':
-        return categorical_masked_representation(y_obs)

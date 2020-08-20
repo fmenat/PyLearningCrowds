@@ -82,3 +82,39 @@ plot_confusion_matrix(generate_Global_conf(Z, R), title= "Global Matrix")
 codeE.utils.get_confusionM(*args)
 ```
 Perform same operation that *generate_Global_conf*
+
+-----
+### Pre-train neural network
+```python
+codeE.utils.pre_init_F(model, X_inp, Z_targ, n_init, batch_size=32)
+```
+Train the neural net model and reset the optimizer, as a pre-train step.
+
+**Parameters**  
+* **model: *function or class of keras model***  
+Predictive model based on [Keras](https://keras.io/).
+* **X_inp: *array-like of shape (n_samples, ...)***  
+Input patterns of the data.
+* **Z_targ: *array-like of shape (n_samples, n_classes)***  
+The estimation of the ground truth to pre-train the model.
+* **n_init_Z: *int, default=0***  
+The number of epochs that the predictive model is going to be pre-trained.
+* **batch_size: *int, default=32***  
+Number of samples per gradient update, based on https://keras.io/api/models/model_training_apis/
+
+##### Examples
+```python
+... #read some data 
+X_data = ...
+Z_hat = ...
+```
+> Define predictive model (based on keras)
+```python
+model_B = Sequential()
+... #add layers
+```
+> Use it
+```python
+from codeE.utils import pre_init_F
+pre_init_F(model_B, X_data, Z_hat, n_init=3)
+```

@@ -1,19 +1,11 @@
 from sklearn.metrics import confusion_matrix,f1_score
 from sklearn.preprocessing import normalize
-import itertools, keras, math,gc
+import itertools, keras, math,gc, time,sys, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from .evaluation import *
-
-#def get_confusionM(pred,y_obs):
-#    """
-#        * pred is prediction probabilities or one hot, p(z=gamma|x)
-#        * y_obs is annotator probabilities shape is (N,T,K)
-#    """
-#    aux = np.tensordot(pred, y_obs, axes=[[0],[0]]).transpose(1,0,2)
-#    return aux/np.sum(aux, axis=-1)[:,:,None] #normalize
 
 def generate_Individual_conf(Z_data, annotations, DTYPE_OP='float32'):
     if len(Z_data.shape) == 1:
@@ -280,3 +272,106 @@ def estimate_batch_size(model, scale_by=5.0,precision = 2):
     )))
     max_size = max(32,np.int(available_mem / (precision * num_params * scale_by)))
     return np.int(2 ** math.floor(np.log(max_size)/np.log(2)))
+
+def pre_init_F(model, X_inp, Z_targ, n_init, batch_size=32):
+    print("Pre-train network on %d epochs..."%(n_init),end='',flush=True)
+    model.fit(X_inp, Z_targ, batch_size=batch_size, epochs = n_init, verbose=0)
+    #reset optimizer but hold weights--necessary for stability 
+    loss_p = model.loss
+    opt = type(model.optimizer).__name__
+    model.compile(loss=loss_p, optimizer=opt)
+    print(" Done!")
+
+
+from sklearn.decomposition import KernelPCA, PCA, TruncatedSVD
+from sklearn.cluster import DBSCAN,AffinityPropagation, MiniBatchKMeans, KMeans
+from sklearn.preprocessing import StandardScaler
+
+def clusterize_annotators(y_o,M,no_label=-1,bulk=True,cluster_type='mv_close',data=[],model=None,DTYPE_OP='float32',BATCH_SIZE=64,option="hard",l=0.005):
+    start_time = time.time()
+    if bulk: #Individual scenario --variable y_o
+        if cluster_type == 'previous':
+            A_rep_aux = y_o
+        else:
+            A_idx = data[0]
+            mv_soft = data[1]
+            Kl  = mv_soft.shape[1]
+            conf_mat, conf_mat_norm  = build_conf_Yvar(y_o, A_idx, mv_soft.argmax(axis=-1))
+            if cluster_type == 'flatten' or cluster_type == 'conf_flatten':
+                A_rep_aux = conf_mat_norm.reshape(conf_mat_norm.shape[0], Kl**2) #flatten
+            elif cluster_type == 'js' or cluster_type == 'conf_js': 
+                A_rep_aux = np.zeros((conf_mat.shape[0], Kl))
+                for t in range(A_rep_aux.shape[0]):
+                    A_rep_aux[t] = JS_confmatrixs(conf_mat_norm[t], np.identity(Kl),raw=True) #distancia a I (MV)
+
+        probas_t = aux_clusterize(A_rep_aux,M,DTYPE_OP,option) #labels_kmeans
+        alphas_init = probas_t
+
+    else: #Global scenario: y_o: is soft-MV
+        mv_soft = y_o.copy()
+        if cluster_type=='loss': #cluster respecto to loss function
+            obj_clone = Clonable_Model(model)
+            aux_model = obj_clone.get_model()
+            aux_model.compile(loss='categorical_crossentropy',optimizer=model.optimizer)
+            aux_model.fit(data, mv_soft, batch_size=BATCH_SIZE,epochs=30,verbose=0)
+            predicted = aux_model.predict(data,verbose=0)
+        elif cluster_type == 'mv_close':
+            predicted = np.clip(mv_soft, keras.backend.epsilon(), 1.)
+       
+        data_to_cluster = []
+        for i in range(mv_soft.shape[0]):
+            for j in range(mv_soft.shape[1]):
+                ob = np.tile(keras.backend.epsilon(), mv_soft.shape[1])
+                ob[j] = 1
+                true = np.clip(predicted[i],keras.backend.epsilon(),1.)      
+                f_l = distance_function(true, ob)  #funcion de distancia o similaridad
+                data_to_cluster.append(f_l)  
+        data_to_cluster = np.asarray(data_to_cluster)
+        #if manny classes or low entropy?
+        model = PCA(n_components=min(3,mv_soft.shape[1]) ) # 2-3
+        data_to_cluster = model.fit_transform(data_to_cluster) #re ejecutar todo con esto
+        probas_t = aux_clusterize(data_to_cluster,M,DTYPE_OP,option,l)
+        alphas_init = probas_t.reshape(mv_soft.shape[0],mv_soft.shape[1],M)
+
+    return alphas_init
+
+def distance_function(predicted,ob):
+    return -predicted*np.log(ob) #CE raw
+
+def aux_clusterize(data_to_cluster,M,DTYPE_OP='float32',option="hard",l=0.005):
+    """ Clusterize data """
+    print("Doing clustering...",end='',flush=True)
+    std = StandardScaler()
+    data_to_cluster = std.fit_transform(data_to_cluster) 
+        
+    kmeans = MiniBatchKMeans(n_clusters=M, random_state=0,init='k-means++',batch_size=128)
+    kmeans.fit(data_to_cluster)
+    distances = kmeans.transform(data_to_cluster)
+
+    if option=="fuzzy":
+        probas_t = np.zeros_like(distances,dtype=DTYPE_OP)
+        for t in range(probas_t.shape[0]):
+            for m in range(probas_t.shape[1]):
+                m_fuzzy = 1.2
+                probas_t[t,m] = 1/(np.sum( np.power((distances[t,m]/(distances[t,:]+keras.backend.epsilon())), 2/(m_fuzzy-1)) ) + keras.backend.epsilon())
+    elif option == "softmax":
+        probas_t = softmax(-(distances+keras.backend.epsilon())/l).astype(DTYPE_OP)
+    elif option == "softmax inv":
+        probas_t = softmax(1/(l*distances+keras.backend.epsilon())).astype(DTYPE_OP)
+    elif option == 'hard':
+        probas_t = keras.utils.to_categorical(kmeans.labels_,num_classes=M)
+    print("Done!")
+    return probas_t
+
+def build_conf_Yvar(y_obs_var, A_idx, Z_val):
+    """ From variable length arrays of annotations and indexs"""
+    T = np.max(np.concatenate(A_idx))+1
+    N = y_obs_var.shape[0]
+    Kl = np.max(Z_val) +1
+    aux_confe_matrix = np.ones((T,Kl,Kl))
+    for i in range(N): #independiente de "T"
+        for l, a_idx in enumerate(A_idx[i]):
+            obs_t = y_obs_var[i][l].argmax(axis=-1)
+            aux_confe_matrix[a_idx, Z_val[i], obs_t] +=1
+    aux_confe_matrix_n = aux_confe_matrix/aux_confe_matrix.sum(axis=-1,keepdims=True)
+    return aux_confe_matrix, aux_confe_matrix_n #return both: normalized and unnormalized

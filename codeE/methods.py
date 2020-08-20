@@ -3,213 +3,96 @@ import numpy as np
 from .learning_models import LogisticRegression_Sklearn,LogisticRegression_Keras,MLP_Keras
 from .learning_models import default_CNN,default_RNN,CNN_simple, RNN_simple, default_CNN_text, default_RNN_text, Clonable_Model #deep learning
 from .representation import *
-from .utils import estimate_batch_size, EarlyStopRelative
-
-def majority_voting(r_obs,onehot=False,probas=False):
-    """
-    Args:
-        * onehot mean if the returned array come as a one hot of the classes
-        * probas mean that a probability version of majority voting is returned
-    """
-    if probas:
-        r_obs = r_obs.astype('float32')
-        return r_obs/r_obs.sum(axis=-1, keepdims=True)
-
-    mv = r_obs.argmax(axis=1) #over classes axis
-    if onehot: 
-        mv = keras.utils.to_categorical(mv)
-    return mv
-
+from .utils import estimate_batch_size, EarlyStopRelative, pre_init_F, clusterize_annotators
 
 class LabelAggregation(object): #no predictive model
-    def __init__(self, scenario="global"): 
+    def __init__(self, scenario="global", sparse=False): 
+        #individual assume dense
         self.scenario = scenario
-        return
+        self.sparse = sparse #only for individual
 
-    def infer(self, labels, method, weights=[1], onehot=False):
-        """
-            *labels is annotations : should be individual or global representation
-        """
+    def infer(self, labels, method, weights=[1], onehot=False): #weights for only individual dense
         method = method.lower()
         
         if self.scenario == "global":
-            if len(labels.shape) != 2:
-                r_obs = annotations2repeat_efficient(labels).astype('float32')
-            else:
+            if len(labels.shape) == 2:
                 r_obs = labels.astype('float32')
-
-            if method == 'softmv': 
-                to_return = r_obs/r_obs.sum(axis=-1, keepdims=True)
-
-                #mv_probas = majority_voting(r_obs, probas=True) 
-
-            elif method == "hardmv":
-                #to_return =  majority_voting(r_obs, probas=False) 
-                to_return = r_obs.argmax(axis=1) #over classes axis
-                if onehot: 
-                    to_return = keras.utils.to_categorical(to_return)
+            else:
+                r_obs = set_representation(labels, needed="onehot").astype('float32')                
 
         elif self.scenario == "individual":
-            if len ==2:
-                y_obs_categorical = set_representation(y_obs,'onehot') 
-            else:
-                y_obs_categorical = labels.astype('float32')
+            if self.sparse:
+                if len(labels.shape) == 1:
+                    y_variable_categorical = labels                    
+                else:
+                    y_variable_categorical = set_representation(labels,'variable')
 
-            weights = np.asarray(weights, dtype='float32')
-            r_obs = (y_obs_categorical*weights[None,:,None]).sum(axis=1)
+                N = y_variable_categorical.shape[0]
+                K = y_variable_categorical[0].shape[1]
+                r_obs = np.zeros((N,K),dtype='int32')
+                for i in range(N):
+                    r_obs[i] = y_variable_categorical[i].sum(axis=0)
+            else: #dense
+                if len(labels.shape) ==3:
+                    y_obs_categorical = labels.astype('float32')
+                else:
+                    y_obs_categorical = set_representation(labels,'onehot').astype('float32')                
 
-            if method == 'softmv': 
-                #mv_probas = majority_voting(r_obs, probas=True) 
-                to_return = r_obs/r_obs.sum(axis=-1, keepdims=True)
+                weights = np.asarray(weights, dtype='float32')
+                r_obs = (y_obs_categorical*weights[None,:,None]).sum(axis=1)
 
-            elif method == "hardmv":
-                to_return = r_obs.argmax(axis=1) #over classes axis
-                if onehot: 
-                    to_return = keras.utils.to_categorical(to_return)
+        if method == 'softmv': 
+            to_return = r_obs/r_obs.sum(axis=-1, keepdims=True)
+
+        elif method == "hardmv":
+            to_return = r_obs.argmax(axis=1) #over classes axis
+            if onehot: 
+                to_return = keras.utils.to_categorical(to_return)
 
         return to_return
 
-
     def predict(self, *args):
         return self.infer(*args)
 
 
-class LabelInference(object): #no predictive model
-    def __init__(self): #, method, tolerance, max_iter=50): 
-        return
-        #self.method = method.lower()
-
-        #if 'd&s' in type_inf.lower() or "dawid" in type_inf.lower() or "ds" in type_inf.lower():
-        #    start_time = time.time()
-        #    self.annotations = set_representation(labels,'dawid') #for D&S
-        #    print("Representation for DS in %f sec"%(time.time()-start_time))
-            
-        #self.Tol = tolerance #tolerance of D&S
-        #self.T = labels.shape[1]
-        #self.calc_MV = False
-        #self.max_iter = max_iter
-
-    def infer(self, labels, method):
-        """
-            *labels is annotations : should be individual or global representation
-        """
-        #if not self.calc_MV: #to avoid calculation.
-        #start_time = time.time()
-        #self.calc_MV = True   
-        #print("Estimation MV in %f sec"%(time.time()-start_time))
-        method = method.lower()
-        if len(labels.shape) == 3:
-            r_obs = annotations2repeat_efficient(labels)
-        else:
-            r_obs = labels
-
-
-    def predict(self, *args):
-        return self.infer(*args)
-            
-    #def DS_labels(self):
-    #    # https://github.com/dallascard/dawid_skene
-    #    start_time =time.time()
-    #    aux = dawid_skene.run(self.annotations,tol=self.Tol, max_iter=self.max_iter, init='average')
-    #    (_, _, _, _, class_marginals, error_rates, groundtruth_estimate, current_exectime) = aux
-    #    self.DS_current_exectime = current_exectime
-    #    print("Estimation for DS in %f sec"%(time.time()-start_time))
-    #    return groundtruth_estimate, error_rates
-
-
-class RaykarMC(object):
-    def __init__(self,input_dim,K,T,epochs=1,batch_size=32,optimizer='adam',DTYPE_OP='float32', init_Z='softmv'): #default stable parameteres
-        if type(input_dim) != tuple:
-            input_dim = (input_dim,)
-        self.input_dim = input_dim
-        self.K = K #number of classes of the problem
-        self.T = T #number of annotators
-        #params:
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.optimizer = optimizer
+class LabelInference_EM(object): #DS
+    def __init__(self,init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32'):
         self.DTYPE_OP = DTYPE_OP
-
-        self.compile=False
-        self.Keps = keras.backend.epsilon()
-        self.priors=False #boolean of priors
-
         self.init_Z = init_Z.lower()
+        self.set_priors(priors)
+        self.fast = fast #fast DS method.. 
+        
+        self.Keps = keras.backend.epsilon()
         self.init_done = False
         
-    def get_basemodel(self):
-        return self.base_model
+    def get_marginalZ(self):
+        return self.z_marginal.copy()
     def get_confusionM(self):
-        """Get confusion matrices of every annotator p(yo^t|,z)"""  
         return self.betas.copy()
     def get_qestimation(self):
-        return self.Qi_gamma.copy()
+        return self.Qi_k.copy()
 
-    def define_model(self,tipo,model=None,start_units=1,deep=1,double=False,drop=0.0,embed=[],BatchN=False,glo_p=False):
-        """Define the network of the base model"""
-        self.type = tipo.lower()     
-        if self.type == "keras_shallow" or 'perceptron' in self.type: 
-            self.base_model = LogisticRegression_Keras(self.input_dim,self.K)
-            #It's not a priority, since HF has been shown to underperform RMSprop and Adagrad, while being more computationally intensive.
-            #https://github.com/keras-team/keras/issues/460
-            self.compile = True
-            return
-        
-        if self.type == "keras_import":
-            self.base_model = model
-        elif self.type=='defaultcnn' or self.type=='default cnn':
-            self.base_model = default_CNN(self.input_dim,self.K)
-        elif self.type=='defaultrnn' or self.type=='default rnn':
-            self.base_model = default_RNN(self.input_dim,self.K)
-        elif self.type=='defaultcnntext' or self.type=='default cnn text': #with embedding
-            self.base_model = default_CNN_text(self.input_dim[0],self.K,embed) #len is the length of the vocabulary
-        elif self.type=='defaultrnntext' or self.type=='default rnn text': #with embedding
-            self.base_model = default_RNN_text(self.input_dim[0],self.K,embed) #len is the length of the vocabulary
-
-        elif self.type == "ff" or self.type == "mlp" or self.type=='dense': #classic feed forward
-            print("Needed params (units,deep,drop,BatchN?)") #default activation is relu
-            self.base_model = MLP_Keras(self.input_dim,self.K,start_units,deep,BN=BatchN,drop=drop)
-
-        elif self.type=='simplecnn' or self.type=='simple cnn' or 'cnn' in self.type:
-            print("Needed params (units,deep,drop,double?,BatchN?)") #default activation is relu
-            self.base_model = CNN_simple(self.input_dim,self.K,start_units,deep,double=double,BN=BatchN,drop=drop,global_pool=glo_p)
-        
-        elif self.type=='simplernn' or self.type=='simple rnn' or 'rnn' in self.type:
-            print("Needed params (units,deep,drop,embed?)")
-            self.base_model = RNN_simple(self.input_dim,self.K,start_units,deep,drop=drop,embed=embed,len=0,out=start_units*2)
-
-        self.base_model.compile(optimizer=self.optimizer,loss='categorical_crossentropy') 
-        self.max_Bsize_base = estimate_batch_size(self.base_model)
-        self.compile = True
-
-    def get_predictions(self,X):
-        if "sklearn" in self.type:
-            return self.base_model.predict_proba(X) #or predict
-        else:
-            return self.base_model.predict(X,batch_size=self.max_Bsize_base)
-        
-    def define_priors(self,priors):
-        """
-            Ojo que en raykar los priors deben tener una cierta forma (T,K,K) o hacerlos globales (T,K)
-            para cualquier variable obs
-            El obs t, dado que la clase "k" que tan probable es que diga que es una clase..
-            se recomienda que sea uno
-        """
+    def set_priors(self, priors):
         if type(priors) == str:
-            if priors == "laplace":
+            if priors.lower() == "laplace":
                 priors = 1
+            elif priors.lower() == "none":
+                priors = 0
             else:
-                print("Prior string do not understand")
-                return
-        else:
-            if len(priors.shape)==2:
-                priors=np.expand_dims(priors,axis=2)
+                raise Exception('Prior not valid')
+                
+        priors = np.asarray(priors)
+        if len(priors.shape)==0:
+            priors = np.expand_dims(priors, axis=(0,1,2))
+        elif len(priors.shape)==1:
+            priors=np.expand_dims(priors,axis=(1,2))
+        elif len(priors.shape)==2:
+            priors=np.expand_dims(priors,axis=2)
         self.Mpriors = priors
-        self.priors = True
         
-    def init_E(self,y_ann, method=""): #Majority voting start
+    def init_E(self, y_ann, method=""): #Majority voting start
         print("Initializing new EM...")
-        self.N = y_ann.shape[0]
+        self.N, self.T, self.K = y_ann.shape
         #init p(z|x)
         if method == "":
             method = self.init_Z
@@ -217,49 +100,52 @@ class RaykarMC(object):
         init_GT = label_A.infer(y_ann, method=method, onehot=True)
         #init betas
         self.betas = np.zeros((self.T,self.K,self.K),dtype=self.DTYPE_OP)
+        #init z_marginal
+        self.z_marginal = np.zeros((self.K),dtype=self.DTYPE_OP)
         #init qi
-        self.Qi_gamma = init_GT
+        self.Qi_k = init_GT
+        print("Z marginal shape",self.z_marginal.shape)
         print("Betas shape: ",self.betas.shape)
-        print("Q estimate shape: ",self.Qi_gamma.shape)
+        print("Q estimate shape: ",self.Qi_k.shape)
         self.init_done=True
-                
-    def E_step(self,X,y_ann,predictions=[]):
-        if len(predictions)==0:
-            predictions = self.get_predictions(X)
         
-        #calculate sensitivity-specificity 
-        a_igamma = np.tensordot(y_ann, np.log(self.betas + self.Keps),axes=[[1,2],[0,2]])
-        a_igamma = a_igamma.astype(self.DTYPE_OP)
-        aux = np.log(predictions + self.Keps) + a_igamma
+    def E_step(self,y_ann):        
+        prob_Lx_z = np.tensordot(y_ann, np.log(self.betas + self.Keps),axes=[[1,2],[0,2]])
+        aux = np.log(self.z_marginal[None,:] + self.Keps) + prob_Lx_z
         
-        self.sum_unnormalized_q = np.sum(np.exp(aux),axis=-1)# p(y1,..,yt|x) #all anotations probabilities
+        self.sum_unnormalized_q = np.exp(aux).sum(axis=-1)# p(L_x) = p(y1,..,yt)
 
-        self.Qi_gamma = np.exp(aux-aux.max(axis=-1,keepdims=True)) #return to actually values
-        self.Qi_gamma = self.Qi_gamma/np.sum(self.Qi_gamma,axis=-1)[:,None] #normalize q
+        self.Qi_k = np.exp(aux-aux.max(axis=-1,keepdims=True)).astype(self.DTYPE_OP) #return to actually values
+        self.Qi_k = self.Qi_k/self.Qi_k.sum(axis=-1, keepdims=True)#normalize q
 
-    def M_step(self,X,y_ann): 
-        #-------> base model ---- train to learn p(z|x)
-        if "sklearn" in self.type:
-            self.base_model.fit(X,np.argmax(self.Qi_gamma,axis=-1)) #to one hot 
-        else:
-            #epochs=1 as Rodriges says. and batch size as default
-            history = self.base_model.fit(X,self.Qi_gamma,batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+    def C_step(self):        
+        Qi_hard = np.zeros(self.Qi_k.shape, dtype=self.DTYPE_OP)
+        label_argmax = self.Qi_k.argmax(axis=-1)
+        Qi_hard[np.arange(self.N), label_argmax] = 1 #one hot version
+        self.Qi_k = Qi_hard
         
+    def M_step(self, y_ann): 
+        #-------> z_marginals 
+        self.z_marginal = self.Qi_k.mean(axis=0)
+       
         #-------> beta
-        self.betas = np.tensordot(self.Qi_gamma, y_ann, axes=[[0],[0]]).transpose(1,0,2)
-        if self.priors: #as a annotator not label all data:
-            self.betas += self.Mpriors
+        self.betas = np.tensordot(self.Qi_k, y_ann, axes=[[0],[0]]).transpose(1,0,2)
+        self.betas += self.Mpriors
+        
+        #if no priors were seted as annotator not label all data:---
+        mask_zero = self.betas.sum(axis=-1) == 0
+        self.betas[mask_zero] = 1
+        
+        self.betas = self.betas.astype(self.DTYPE_OP)
         self.betas = self.betas/self.betas.sum(axis=-1,keepdims=True) #normalize
     
-    def compute_logL(self):#,yo,predictions):
-        return np.sum( np.log( self.sum_unnormalized_q +self.Keps))
+    def compute_logL(self):
+        logL_priors = np.sum(self.Mpriors* np.log(self.betas+ self.Keps))
+        return np.sum(np.log( self.sum_unnormalized_q +self.Keps)) + logL_priors
         
-    def train(self,X_train,yo_train,max_iter=500,relative=True,tolerance=3e-2):   
-        if not self.compile:
-            print("You need to create the model first, set .define_model")
-            return
+    def train(self, y_ann, max_iter=50,relative=True,tolerance=3e-2):   
         if not self.init_done:
-            self.init_E(yo_train)
+            self.init_E(y_ann)
 
         logL = []
         stop_c = False
@@ -268,10 +154,159 @@ class RaykarMC(object):
         while(not stop_c):
             print("Iter %d/%d \nM step:"%(self.current_iter,max_iter),end='',flush=True)
             start_time = time.time()
-            self.M_step(X_train,yo_train)
+            self.M_step(y_ann)
+            print(" done,  E step:",end='',flush=True)
+            self.E_step(y_ann)
+            self.current_exectime = time.time()-start_time
+            print(" done //  (in %.2f sec)\t"%(self.current_exectime),end='',flush=True)
+            logL.append(self.compute_logL())  #compute lowerbound
+            print("logL: %.3f\t"%(logL[-1]),end='',flush=True)
+            if self.fast:
+                self.C_step()
+            if self.current_iter>=2:
+                tol = np.abs(logL[-1] - logL[-2]) #absolute
+                if relative: #relative
+                    tol = tol/np.abs(logL[-2])
+                tol2 = np.mean(np.abs(self.betas.flatten()-old_betas)/(old_betas+self.Keps))
+                print("Tol1: %.5f\tTol2: %.5f\t"%(tol,tol2),end='',flush=True)
+            old_betas = self.betas.flatten() 
+            self.current_iter+=1
+            print("")
+            if self.current_iter>max_iter or (tol<=tolerance and tol2<=tolerance):
+                stop_c = True
+        print("Finished training")
+        return logL
+    
+    def fit(self, y_ann,max_iter=50,tolerance=3e-2):
+        return self.train(y_ann, max_iter =max_iter, tolerance=tolerance)
+    
+    def infer(self):
+        return self.get_qestimation()
+        
+    def predict(self):
+        return self.infer()
+
+
+class ModelInference_EM(object):
+    def __init__(self, init_Z='softmv', n_init_Z= 0, priors=0, DTYPE_OP='float32'):
+        self.DTYPE_OP = DTYPE_OP
+        self.init_Z = init_Z.lower()
+        self.n_init_Z = n_init_Z
+        self.set_priors(priors)
+
+        self.compile=False
+        self.Keps = keras.backend.epsilon()
+        self.init_done = False
+        
+    def get_basemodel(self):
+        return self.base_model
+    def get_confusionM(self):
+        """Get confusion matrices of every annotator p(yo^t|,z)"""  
+        return self.betas.copy()
+    def get_qestimation(self):
+        return self.Qi_k.copy()
+
+    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32):
+        self.base_model = model
+        #params:
+        self.optimizer = optimizer
+        self.epochs = epochs
+        self.batch_size = batch_size
+
+        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
+        self.compile = True
+        self.max_Bsize_base = estimate_batch_size(self.base_model)
+        
+    def set_priors(self, priors):
+        if type(priors) == str:
+            if priors.lower() == "laplace":
+                priors = 1
+            elif priors.lower() == "none":
+                priors = 0
+            else:
+                raise Exception('Prior not valid')
+                
+        priors = np.asarray(priors)
+        if len(priors.shape)==0:
+            priors = np.expand_dims(priors, axis=(0,1,2))
+        elif len(priors.shape)==1:
+            priors=np.expand_dims(priors,axis=(1,2))
+        elif len(priors.shape)==2:
+            priors=np.expand_dims(priors,axis=2)
+        self.Mpriors = priors
+            
+    def get_predictions(self,X):
+        return self.base_model.predict(X,batch_size=self.max_Bsize_base)
+        
+    def init_E(self,y_ann, method=""): #Majority voting start
+        print("Initializing new EM...")
+        self.N, self.T, self.K = y_ann.shape
+        #init p(z|x)
+        if method == "":
+            method = self.init_Z
+        label_A = LabelAggregation(scenario="individual")
+        init_GT = label_A.infer(y_ann, method=method, onehot=True)
+        #init betas
+        self.betas = np.zeros((self.T,self.K,self.K),dtype=self.DTYPE_OP)
+        #init qi
+        self.Qi_k = init_GT
+        print("Betas shape: ",self.betas.shape)
+        print("Q estimate shape: ",self.Qi_k.shape)
+        self.init_done=True
+                
+    def E_step(self,X,y_ann,predictions=[]):
+        if len(predictions)==0:
+            predictions = self.get_predictions(X)
+        
+        prob_Lx_z = np.tensordot(y_ann, np.log(self.betas + self.Keps),axes=[[1,2],[0,2]])
+        aux = np.log(predictions + self.Keps) + prob_Lx_z
+        
+        self.sum_unnormalized_q = np.sum(np.exp(aux),axis=-1) # p(L_x) = p(y1,..,yt)
+
+        self.Qi_k = np.exp(aux-aux.max(axis=-1,keepdims=True)).astype(self.DTYPE_OP) #return to actually values
+        self.Qi_k = self.Qi_k/np.sum(self.Qi_k,axis=-1)[:,None] #normalize q
+
+    def M_step(self,X,y_ann): 
+        #-------> base model ---- train to learn p(z|x)
+        self.base_model.fit(X,self.Qi_k,batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+        
+        #-------> beta
+        self.betas = np.tensordot(self.Qi_k, y_ann, axes=[[0],[0]]).transpose(1,0,2)
+        self.betas += self.Mpriors
+
+        #if no priors were seted as annotator not label all data:---
+        mask_zero = self.betas.sum(axis=-1) == 0
+        self.betas[mask_zero] = 1
+        
+        self.betas = self.betas.astype(self.DTYPE_OP)
+        self.betas = self.betas/self.betas.sum(axis=-1,keepdims=True) #normalize
+    
+    def compute_logL(self):
+        logL_priors = np.sum(self.Mpriors* np.log(self.betas+ self.Keps))
+        return np.sum( np.log( self.sum_unnormalized_q +self.Keps)) + logL_priors
+        
+    def train(self,X_train,y_ann,max_iter=50,relative=True,tolerance=3e-2):   
+        if not self.compile:
+            print("You need to create the model first, set .define_model")
+            return
+        if not self.init_done:
+            self.init_E(y_ann)
+            if self.n_init_Z != 0:
+                pre_init_F(self.base_model,X_train,self.Qi_k,self.n_init_Z,batch_size=self.batch_size)
+
+        self.input_dim = X_train.shape[1:]
+
+        logL = []
+        stop_c = False
+        old_betas,tol = np.inf, np.inf
+        self.current_iter = 1
+        while(not stop_c):
+            print("Iter %d/%d \nM step:"%(self.current_iter,max_iter),end='',flush=True)
+            start_time = time.time()
+            self.M_step(X_train,y_ann)
             print(" done,  E step:",end='',flush=True)
             predictions = self.get_predictions(X_train) #p(z|x)
-            self.E_step(X_train,yo_train,predictions)
+            self.E_step(X_train,y_ann,predictions)
             self.current_exectime = time.time()-start_time
             print(" done //  (in %.2f sec)\t"%(self.current_exectime),end='',flush=True)
             logL.append(self.compute_logL())  #compute lowerbound
@@ -291,14 +326,12 @@ class RaykarMC(object):
         return logL
             
     def stable_train(self,X,y_ann,max_iter=50,tolerance=3e-2):
-        self.define_priors('laplace') #cada anotadora dijo al menos una clase
         logL_hist = self.train(X,y_ann,max_iter=max_iter,relative=True,tolerance=tolerance)
         return logL_hist
     
     def multiples_run(self,Runs,X,y_ann,max_iter=50,tolerance=3e-2):  #tolerance can change
         if Runs==1:
             return self.stable_train(X,y_ann,max_iter=max_iter,tolerance=tolerance), 0
-        self.define_priors('laplace') #cada anotadora dijo al menos una clase
      
         found_betas = []
         found_model = []
@@ -345,179 +378,568 @@ class RaykarMC(object):
         else:
             p_z = self.get_predictions(X)
         predictions_a= np.tensordot(p_z ,self.betas,axes=[[1],[1]] ) # sum_z p(z|xi) * p(yo|z,t)
-        return predictions_a#.transpose(1,0,2)
-
-    def get_annotator_reliability(self,t):
-        """Get annotator reliability, based on his identifier: t"""
-        conf_M = self.betas[t,:,:]
-        return conf_M #do something with it
+        return predictions_a  
     
-    
-
-#from .crowd_layers import CrowdsClassification, MaskedMultiCrossEntropy, MaskedMultiCrossEntropy_Reg
-class RodriguesCrowdLayer(object):
-    def __init__(self, input_dim, Kl, T, epochs=1, optimizer='adam',DTYPE_OP='float32'): #default stable parameteres
-        if type(input_dim) != tuple:
-            input_dim = (input_dim,)
-        self.input_dim = input_dim
-        self.K = Kl #number of classes of the problem
-        self.T = T #number of annotators
-        #params:
-        self.epochs = epochs
-        self.optimizer = optimizer
+"""
+    MIXTURE MODEL NOT KNOWING THE IDENTITY
+    >>> CMM (CROWD MIXTURE OF MODEL) <<<
+"""
+class CMM(object): 
+    def __init__(self, M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32'):
         self.DTYPE_OP = DTYPE_OP
+        self.init_Z = init_Z.lower()
+        self.n_init_Z = n_init_Z
+        self.M = M #groups of annotators
+        self.set_priors(priors)
 
         self.compile=False
         self.Keps = keras.backend.epsilon()
+        self.init_done = False
         
-    def define_model(self,tipo,model,start_units=1,deep=1,double=False,drop=0.0,embed=[],BatchN=False,glo_p=False, loss="masked",lamb=1):
-        """Define the network of the base model"""
-        self.type = tipo.lower()     
-        if self.type == "keras_shallow" or 'perceptron' in self.type: 
-            base_model = LogisticRegression_Keras(self.input_dim,self.K)
-            #It's not a priority, since HF has been shown to underperform RMSprop and Adagrad, while being more computationally intensive.
-            #https://github.com/keras-team/keras/issues/460
-            self.compile = True
-            return
-        
-        if self.type == "keras_import":
-            base_model = model
-        elif self.type=='defaultcnn' or self.type=='default cnn':
-            base_model = default_CNN(self.input_dim,self.K)
-        elif self.type=='defaultrnn' or self.type=='default rnn':
-            base_model = default_RNN(self.input_dim,self.K)
-        elif self.type=='defaultcnntext' or self.type=='default cnn text': #with embedding
-            base_model = default_CNN_text(self.input_dim[0],self.K,embed) #len is the length of the vocabulary
-        elif self.type=='defaultrnntext' or self.type=='default rnn text': #with embedding
-            base_model = default_RNN_text(self.input_dim[0],self.K,embed) #len is the length of the vocabulary
+    def get_basemodel(self):
+        return self.base_model
+    def get_confusionM(self):
+        """Get confusion matrices of every group p(yo|g,z)"""  
+        return self.betas.copy()
+    def get_alpha(self):
+        """Get alpha param, p(g) globally"""
+        return self.alphas.copy()
+    def get_qestimation(self):
+        """Get Q estimation param, this is Q_ij(g,z) = p(g,z|xi,y=j)"""
+        return self.Qij_mgamma.copy()
 
-        elif self.type == "ff" or self.type == "mlp" or self.type=='dense': #classic feed forward
-            print("Needed params (units,deep,drop,BatchN?)") #default activation is relu
-            base_model = MLP_Keras(self.input_dim,self.K,start_units,deep,BN=BatchN,drop=drop)
+    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32):
+        self.base_model = model
+        #params:
+        self.optimizer = optimizer
+        self.epochs = epochs
+        self.batch_size = batch_size
 
-        elif self.type=='simplecnn' or self.type=='simple cnn' or 'cnn' in self.type:
-            print("Needed params (units,deep,drop,double?,BatchN?)") #default activation is relu
-            base_model = CNN_simple(self.input_dim,self.K,start_units,deep,double=double,BN=BatchN,drop=drop,global_pool=glo_p)
-        
-        elif self.type=='simplernn' or self.type=='simple rnn' or 'rnn' in self.type:
-            print("Needed params (units,deep,drop,embed?)")
-            base_model = RNN_simple(self.input_dim,self.K,start_units,deep,drop=drop,embed=embed,len=0,out=start_units*2)
-
-        x = base_model.input
-        base_model = keras.models.Model(x, base_model(x), name='base_model')
-        base_model.compile(optimizer=self.optimizer,loss='categorical_crossentropy') 
-
-        ## DEFINE NEW NET
-        p_zx = base_model(x)
-        crowd_layer = CrowdsClassification(self.K, self.T, conn_type="MW", name='CrowdL') ## ADD CROWDLAYER 
-        p_yxt = crowd_layer(p_zx)
-        self.model_crowdL = keras.models.Model(x, p_yxt) 
-
-        self.loss = loss
-        self.lamb = lamb
-        if self.loss == "masked" or self.loss=='normal' or self.loss=='default':
-            self.model_crowdL.compile(optimizer=self.optimizer, loss= MaskedMultiCrossEntropy_Reg().loss )
-        elif self.loss == "kl":
-            self.model_crowdL.compile(optimizer=self.optimizer, loss= MaskedMultiCrossEntropy_Reg().loss_prior_MV(p_zx,self.lamb) )
+        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
         self.compile = True
-        self.base_model = self.model_crowdL.get_layer("base_model")
         self.max_Bsize_base = estimate_batch_size(self.base_model)
+
+    def set_priors(self, priors):
+        if type(priors) == str:
+            if priors.lower() == "laplace":
+                priors = 1
+            elif priors.lower() == "none":
+                priors = 0
+            else:
+                raise Exception('Prior not valid')
+                
+        priors = np.asarray(priors)
+        if len(priors.shape)==0:
+            priors = np.expand_dims(priors, axis=(0,1,2))
+        elif len(priors.shape)==1:
+            priors=np.expand_dims(priors,axis=(1,2))
+        elif len(priors.shape)==2:
+            priors=np.expand_dims(priors,axis=2)
+        self.Bpriors = priors
+
+    def get_predictions(self,X):
+        return self.base_model.predict(X,batch_size=self.max_Bsize_base) #fast predictions
+
+    def init_E(self, r_ann, method=""):
+        print("Initializing new EM...")
+        self.N, self.K = r_ann.shape
+
+        #-------> init Majority voting    
+        if method == "":
+            method = self.init_Z
+        label_A = LabelAggregation(scenario="global")
+        self.init_GT = label_A.infer(r_ann, method=method, onehot=True)
+
+        #-------> init alpha
+        self.alpha_init = clusterize_annotators(self.init_GT,M=self.M,bulk=False,cluster_type='mv_close',DTYPE_OP=self.DTYPE_OP) #clusteriza en base mv
         
-    def train(self,X_train,yo_train,batch_size=64,max_iter=500,tolerance=1e-2, pre_init_z=0):   
+         #-------> Initialize p(z=k,g=m|xi,y=j)
+        self.Qij_mgamma = self.alpha_init[:,:,:,None]*self.init_GT[:,None,None,:]
+
+        #-------> init betas
+        self.betas = np.zeros((self.M,self.K,self.K),dtype=self.DTYPE_OP) 
+        #-------> init alphas
+        self.alphas = np.zeros((self.M),dtype=self.DTYPE_OP)
+        print("Alphas: ",self.alphas.shape)
+        print("Betas: ",self.betas.shape)
+        print("Q estimate: ",self.Qij_mgamma.shape)
+        self.init_done=True
+        
+    def E_step(self, X,  predictions=[]):
+        if len(predictions)==0:
+            predictions = self.get_predictions(X)
+
+        z_new = np.log( np.clip(predictions, self.Keps, 1.))[:,None,None,:] 
+        a_new = np.log( np.clip(self.alphas, self.Keps, 1.))[None,None,:,None] 
+        b_new = (np.log( np.clip(self.betas, self.Keps, 1.))[None,:,:,:]).transpose(0,3,1,2) 
+        
+        self.Qij_mgamma = np.exp(z_new + a_new + b_new)
+        self.aux_for_like = (self.Qij_mgamma.sum(axis=-1)).sum(axis=-1) #p(y=j|x) --marginalized
+        self.Qij_mgamma = self.Qij_mgamma/self.aux_for_like[:,:,None,None] #normalize
+
+    def M_step(self, X, r_ann): 
+        QRij_mgamma = self.Qij_mgamma*r_ann[:,:,None,None]
+        
+        #-------> base model
+        r_estimate = QRij_mgamma.sum(axis=(1,2))
+        self.base_model.fit(X, r_estimate,batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+    
+        #-------> alpha 
+        self.alphas = QRij_mgamma.sum(axis=(0,1,3)) 
+        self.alphas = self.alphas/self.alphas.sum(axis=-1,keepdims=True) #p(g) -- normalize
+
+        #-------> beta
+        self.betas = (QRij_mgamma.sum(axis=0)).transpose(1,2,0)            
+        self.betas += self.Bpriors 
+
+        #if no priors were seted as annotator not label all data:---
+        mask_zero = self.betas.sum(axis=-1) == 0
+        self.betas[mask_zero] = 1
+
+        self.betas = self.betas/self.betas.sum(axis=-1,keepdims=True) #normalize (=p(yo|g,z))
+
+    def compute_logL(self, r_ann):
+        """ Compute the log-likelihood of the optimization schedule"""
+        logL_priors = np.sum(self.Bpriors* np.log(self.betas+ self.Keps))
+        return np.tensordot(r_ann , np.log(self.aux_for_like+self.Keps))+ logL_priors 
+                                                  
+    def train(self,X_train, r_ann, max_iter=50,relative=True,tolerance=3e-2):
         if not self.compile:
             print("You need to create the model first, set .define_model")
             return
-        print("Initializing...")
-        self.N = X_train.shape[0]
-        self.batch_size = batch_size
-        self.base_model = self.model_crowdL.get_layer("base_model")
-        if pre_init_z != 0:
-            mv_probs = majority_voting(y_ann,repeats=False,probas=True) #Majority voting start
-            print("Pre-train networks over *z* on %d epochs..."%(self.pre_init_z),end='',flush=True)
-            self.base_model.fit(X,mv_probs_j,batch_size=self.batch_size,epochs=self.pre_init_z,verbose=0)
-            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer) #reset optimizer but hold weights--necessary for stability   
-            print(" Done!")
+        if not self.init_done:
+            self.init_E(r_ann)
+            if self.n_init_Z != 0:
+                pre_init_F(self.base_model,X_train, self.init_GT, self.n_init_Z,batch_size=self.batch_size)
+                self.init_GT = None
         
-        ourCallback = EarlyStopRelative(monitor='loss',patience=1,min_delta=tolerance)
-        hist = self.model_crowdL.fit(X_train, yo_train, epochs=max_iter, batch_size=batch_size, verbose=1,callbacks=[ourCallback])
-        print("Finished training")
-        return hist.history["loss"]
-            
-    def stable_train(self,X,y_ann,batch_size=64,max_iter=50,tolerance=1e-2,pre_init_z=0):
-        logL_hist = self.train(X,y_ann,batch_size=batch_size,max_iter=max_iter,tolerance=tolerance,pre_init_z=pre_init_z)
+        logL = []
+        stop_c = False
+        tol,old_betas,old_alphas = np.inf,np.inf,np.inf
+        self.current_iter = 1
+        while(not stop_c):
+            print("Iter %d/%d\nM step:"%(self.current_iter,max_iter),end='',flush=True)
+            start_time = time.time()
+            self.M_step(X_train, r_ann) #Need X_i, r_ann
+            print(" done,  E step:",end='',flush=True)
+            predictions = self.get_predictions(X_train) #p(z|x)  #--- revisar si sacar
+            self.E_step(X_train, predictions) 
+            self.current_exectime = time.time()-start_time
+            print(" done //  (in %.2f sec)\t"%(self.current_exectime),end='',flush=True)
+            logL.append(self.compute_logL(r_ann))
+            print("logL: %.3f\t"%(logL[-1]),end='',flush=True)
+            if self.current_iter>=2:
+                tol = np.abs(logL[-1] - logL[-2])                    
+                if relative:
+                    tol = tol/np.abs(logL[-2])
+                tol2 = np.mean(np.abs(self.betas.flatten()-old_betas)/(old_betas+self.Keps)) #confusion
+                tol3 = np.mean(np.abs(self.alphas-old_alphas)/(old_alphas+self.Keps)) #alphas
+                print("Tol1: %.5f\tTol2: %.5f\tTol3: %.5f\t"%(tol,tol2,tol3),end='',flush=True)
+            old_betas = self.betas.flatten().copy()         
+            old_alphas = self.alphas.copy()
+            self.current_iter+=1
+            print("")
+            if self.current_iter>max_iter or (tol<=tolerance and tol2<=tolerance): #alphas fuera: and tol3<=tolerance
+                stop_c = True 
+        print("Finished training!")
+        return np.asarray(logL)
+    
+    def stable_train(self,X,r_ann,max_iter=50,tolerance=3e-2):
+        """
+            A stable schedule to train a model on this formulation
+        """
+        logL_hist = self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance,relative=True)
         return logL_hist
     
-    def multiples_run(self,Runs,X,y_ann,batch_size=64,max_iter=50,tolerance=1e-2, pre_init_z=0):  #tolerance can change
+    def multiples_run(self,Runs,X,r_ann,max_iter=50,tolerance=3e-2): 
         if Runs==1:
-            return self.stable_train(X,y_ann,batch_size=batch_size,max_iter=max_iter,tolerance=tolerance,pre_init_z=pre_init_z), 0
-     
-        found_model = []
-        found_lossL = []
+            return self.stable_train(X,r_ann,max_iter=max_iter,tolerance=tolerance), 0
+            
+        found_betas = []
+        found_alphas = []
+        found_model = [] #quizas guardar pesos del modelo
+        found_logL = []
         iter_conv = []
-        obj_clone = Clonable_Model(self.model_crowdL) #architecture to clone
+
+        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
+            obj_clone = Clonable_Model(self.base_model) #architecture to clone
+        else:
+            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
+            obj_clone = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
 
         for run in range(Runs):
-            self.model_crowdL = obj_clone.get_model() #reset-weigths    
-            if self.loss == "masked" or self.loss == 'normal' or self.loss =='default':
-                self.model_crowdL.compile(optimizer=self.optimizer, loss= MaskedMultiCrossEntropy_Reg().loss )
-            elif self.loss == "kl":
-                p_zx = self.model_crowdL.get_layer("base_model").get_output_at(-1)
-                self.model_crowdL.compile(optimizer=self.optimizer, loss=  MaskedMultiCrossEntropy_Reg().loss_prior_MV(p_zx,self.lamb) )
+            self.base_model = obj_clone.get_model() #reset-weigths
+            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
 
-            lossL_hist = self.train(X,y_ann,batch_size=batch_size,max_iter=max_iter,tolerance=tolerance,pre_init_z=pre_init_z) 
-            found_model.append(self.model_crowdL.get_weights()) #revisar si se resetean los pesos o algo asi..
-            found_lossL.append(lossL_hist)
-            iter_conv.append(len(lossL_hist))
+            logL_hist = self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance,relative=True) #here the models get resets
             
-            del self.model_crowdL
+            found_betas.append(self.betas.copy())
+            found_alphas.append(self.alphas.copy())
+            found_model.append(self.base_model.get_weights()) #revisar si se resetean los pesos o algo asi..
+            found_logL.append(logL_hist)
+            iter_conv.append(self.current_iter-1)
+            
+            self.init_done = False
+            del self.base_model
             keras.backend.clear_session()
             gc.collect()
-        #setup the configuration with minimum log-loss
-        logLoss_iter = np.asarray([np.min(a) for a in found_lossL]) #o el ultimo valor?
-        indexs_sort = np.argsort(logLoss_iter) #minimum
+        #setup the configuration with maximum log-likelihood
+        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        indexs_sort = np.argsort(logL_iter)[::-1] 
         
-        self.model_crowdL = obj_clone.get_model() #change
-        self.model_crowdL.set_weights(found_model[indexs_sort[0]])
-        self.base_model = self.model_crowdL.get_layer("base_model") #to set up model predictor
-        print("Multiples runs over Raykar, Epochs to converge= ",np.mean(iter_conv))
-        return found_lossL, indexs_sort[0]
+        self.betas = found_betas[indexs_sort[0]].copy()
+        self.alphas = found_alphas[indexs_sort[0]].copy()
+        self.base_model = obj_clone.get_model() #change
+        self.base_model.set_weights(found_model[indexs_sort[0]])
+        self.E_step(X) #to set up Q
+        print(Runs,"runs over CMM, Epochs to converge= ",np.mean(iter_conv))
+        return found_logL,indexs_sort[0]
+
+    def fit(self,X,R, runs = 1, max_iter=50, tolerance=3e-2):
+        return self.multiples_run(runs,X,R,max_iter=max_iter,tolerance=tolerance)
     
+    def get_predictions_groups(self,X,data=[]):
+        if len(data) != 0:
+            prob_Z_ik = data
+        else:
+            prob_Z_ik = self.get_predictions(X)
+        return np.tensordot(prob_Z_ik ,self.betas,axes=[[1],[1]] ) #sum_z p(z|xi) * p(yo|z,g)
+
+    def get_global_confusionM(self):
+        return np.sum(self.betas*self.alphas[:,None,None],axis=0)
+    
+    def get_ann_confusionM(self,X, Y):
+        ########## SE PUEDE MEJORAR!!!!!!!
+        prob_G_tm = self.annotations_2_group(Y, data=X)        
+        return np.tensordot(prob_G_tm, self.get_confusionM(),axes=[[0],[0]])  #p(y^o|z,t) = sum_g p(g|t) * p(yo|z,g)
+
+    def annotations_2_group(self,annotations,data=[],pred=[],no_label_sym = -1):
+        """
+            Map some annotations to some group model by the confusion matrices, p(g| {x_l,y_l})
+        """
+        if len(pred) != 0:
+            predictions_m = pred #if prediction_m is passed
+        elif len(data) !=0: 
+            predictions_m = self.get_predictions_groups(data) #if data is passed
+        else:
+            print("Error, in order to match annotations to a group you need pass the data X or the group predictions")
+            return
+            
+        result = np.log(self.get_alpha()+self.Keps) #si les saco Keps?
+        aux_annotations = [(i,annotation) for i, annotation in enumerate(annotations) if annotation != no_label_sym]
+        for i, annotation in aux_annotations:
+            if annotation != no_label_sym: #if label it
+                for m in range(self.M):
+                    result[m] += np.log(predictions_m[i,m,annotation]+self.Keps)
+        result = np.exp(result - result.max(axis=-1, keepdims=True) ) #invert logarithm in safe way
+        return result/result.sum()
+
+
+"""
+    MIXTURE MODEL KNOWING IDENTITY
+    >>> C-MOA (CROWD - MIXTURE OF ANNOTATORS) <<<
+"""
+class CMOA(object):
+    def __init__(self, M, init_Z="softmv", n_init_Z=0, n_init_G=0, priors=0, DTYPE_OP='float32'): 
+        self.DTYPE_OP = DTYPE_OP
+        self.init_Z = init_Z.lower()
+        self.n_init_Z = n_init_Z
+        self.n_init_G = n_init_G
+        self.M = M #groups of annotators
+        self.set_priors(priors)
+
+        self.compile_z = False
+        self.compile_g = False
+        self.Keps = keras.backend.epsilon()
+        self.init_done = False
+        
     def get_basemodel(self):
         return self.base_model
-    
-    def get_predictions(self,X):
-        if "sklearn" in self.type:
-            return self.base_model.predict_proba(X) #or predict
-        else:
-            return self.base_model.predict(X,batch_size=self.max_Bsize_base)
-        
+    def get_groupmodel(self):
+        return self.group_model
     def get_confusionM(self):
-        """Get confusion matrices of every annotator p(yo^t|,z)"""  
-        weights = self.model_crowdL.get_layer("CrowdL").get_weights()[0] #witohut bias
-        crowdL_conf = weights.T 
-        return crowdL_conf #???
+        """Get confusion matrices of every group p(y|g,z)"""  
+        return self.betas.copy()
+    def get_qestimation(self):
+        """Get Q estimation param, this is Q_il(g,z) = p(g,z|x_i,a_il, r_il)"""
+        return self.reshape_il(self.Qil_mgamma.copy())
         
-    def get_predictions_annot(self,X):
-        """ Predictions of all annotators , p(y^o | xi, t) """
-        return self.model_crowdL.predict(X).transpose([0,2,1]) 
-          
-
-class KajinoClustering(object):
-    def __init__(self, input_dim, Kl, T, optimizer='adam',DTYPE_OP='float32'): #default stable parameteres
-        if type(input_dim) != tuple:
-            input_dim = (input_dim,)
-        self.input_dim = input_dim
-        self.K = Kl #number of classes of the problem
-        self.T = T #number of annotators
+    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32, ann_model=None):
         #params:
-        self.epochs = epochs
         self.optimizer = optimizer
-        self.DTYPE_OP = DTYPE_OP
+        self.epochs = epochs
+        self.batch_size = batch_size
 
-        self.compile=False
-        self.Keps = keras.backend.epsilon()
-        self.priors=False #boolean of priors
+        self.base_model = model
+        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
+        self.compile_z = True
+        self.max_Bsize_base = estimate_batch_size(self.base_model)
 
-   #build model and train and get confusion matrices..
+        if type(ann_model) != type(None):
+            self.set_ann_model(ann_model)
+        
+    def set_ann_model(self, model, optimizer=None, epochs=None):
+        if type(optimizer) == type(None): 
+            optimizer = self.optimizer
 
-   #get base model or predictions average (as guan)
+        if type(epochs) == type(None): 
+            self.group_epochs = self.epochs #set epochs of base model
+        else:
+            self.group_epochs = epochs
+
+        self.group_model = model
+        self.group_model.compile(optimizer=optimizer, loss='categorical_crossentropy') 
+        self.compile_g = True
+        self.max_Bsize_group = estimate_batch_size(self.group_model)
+
+    def set_priors(self, priors):
+        if type(priors) == str:
+            if priors.lower() == "laplace":
+                priors = 1
+            elif priors.lower() == "none":
+                priors = 0
+            else:
+                raise Exception('Prior not valid')
+                
+        priors = np.asarray(priors)
+        if len(priors.shape)==0:
+            priors = np.expand_dims(priors, axis=(0,1,2))
+        elif len(priors.shape)==1:
+            priors=np.expand_dims(priors,axis=(1,2))
+        elif len(priors.shape)==2:
+            priors=np.expand_dims(priors,axis=2)
+        self.Bpriors = priors
+
+    def get_predictions_z(self, X):
+        return self.base_model.predict(X, batch_size=self.max_Bsize_base) 
+
+    def get_predictions_g(self, A):
+        """Return the predictions of the model p(g|t) if is from parameter or model"""
+        return self.group_model.predict(A, batch_size=self.max_Bsize_group)
+
+    def flatten_il(self,array):
+        return np.concatenate(array)
+
+    def reshape_il(self,array):
+        to_return = []
+        sum_Ti_n1 = 0
+        for i in range(self.N):
+            sum_Ti_n   = sum_Ti_n1
+            sum_Ti_n1  = sum_Ti_n1 + self.T_i[i]
+            to_return.append( array[sum_Ti_n : sum_Ti_n1] )
+        del array
+        gc.collect()
+        return np.asarray(to_return)
+
+    def init_E(self, y_ann_var, A_idx_var, method=""):
+        print("Initializing new EM...")
+        self.N = len(y_ann_var)
+        self.K = y_ann_var[0].shape[1]
+        self.T_i = [y_ann.shape[0] for y_ann in y_ann_var] 
+        self.BS_groups = np.ceil(self.batch_size*np.mean(self.T_i)).astype('int') #batch should be prop to T_i
+
+        #-------> init Majority voting    
+        if method == "":
+            method = self.init_Z
+        label_A = LabelAggregation(scenario="individual", sparse=True)
+        self.init_GT = label_A.infer(y_ann_var, method=method, onehot=True)
+        
+        #------->init p(g|a)
+        first_l = self.group_model.layers[0]
+        if type(first_l) == keras.layers.Embedding: #if there is embedding layer
+            A_embedding = first_l.get_weights()[0]
+            probas_t =  clusterize_annotators(A_embedding,M=self.M,bulk=True,cluster_type='previous',DTYPE_OP=self.DTYPE_OP)
+        else:
+            probas_t =  clusterize_annotators(y_ann_var,M=self.M,bulk=True,cluster_type='conf_flatten',data=[A_idx_var,self.init_GT],DTYPE_OP=self.DTYPE_OP)
+        
+        #-------> Initialize p(z=k,g=m|xi,y,a)
+        self.Qil_mgamma = []
+        self.alpha_init = []
+        for i in range(self.N):
+            t_idxs = A_idx_var[i] #indexs of annotators that label pattern "i"
+            self.alpha_init.append( probas_t[t_idxs] )#preinit over alphas
+            self.Qil_mgamma.append( probas_t[t_idxs][:,:,None] * self.init_GT[i][None,None,:] ) 
+        self.Qil_mgamma = self.flatten_il(self.Qil_mgamma)
+
+        #-------> init betas
+        self.betas = np.zeros((self.M,self.K,self.K),dtype=self.DTYPE_OP)        
+        print("Betas: ",self.betas.shape)
+        print("Q estimate: ",self.Qil_mgamma.shape)
+        gc.collect()
+        self.init_done = True
+       
+    def E_step(self, X, y_ann_flatten, A_idx_flatten, predictions_Z=[], predictions_G=[]):
+        if len(predictions_Z)==0:
+            predictions_Z = self.get_predictions_z(X)
+        if len(predictions_G)==0:
+            A = np.unique(A_idx_flatten).reshape(-1,1) # A: annotator identity set
+            predictions_G = self.get_predictions_g(A)
+
+        predictions_G = np.log( np.clip(predictions_G, self.Keps, 1.) ) #safe logarithmn
+        predictions_Z = np.log( np.clip(predictions_Z, self.Keps, 1.) ) #safe logarithmn
+        b_aux = np.tensordot(y_ann_flatten, np.log(self.betas + self.Keps),axes=[[1],[2]]) #safe logarithmn
+
+        lim_sup_i = 0
+        for i, t_i in enumerate(self.T_i):
+            lim_sup_i  += t_i
+            lim_inf_i  = lim_sup_i - t_i
+            b_new      = b_aux [ lim_inf_i:lim_sup_i ]
+            prob_G_lm  = predictions_G[ A_idx_flatten[ lim_inf_i:lim_sup_i ] ] #get group predictions of annotators at indexs "l"
+
+            self.Qil_mgamma[lim_inf_i: lim_sup_i] = np.exp(predictions_Z[i][None,None,:] + prob_G_lm[:,:,None] + b_new)  
+        self.aux_for_like = self.Qil_mgamma.sum(axis=(1,2)) #p(y|x,a) --marginalized
+        self.Qil_mgamma   = self.Qil_mgamma/self.aux_for_like[:,None,None] #normalize
+    
+    def M_step(self, X, y_ann_flatten, A_idx_flatten): 
+        #-------> base model  
+        r_estimate = np.zeros((self.N,self.K),dtype=self.DTYPE_OP)
+        lim_sup = 0
+        for i, t_i in enumerate(self.T_i):
+            lim_sup  += t_i
+            r_estimate[i] = self.Qil_mgamma[lim_sup-t_i : lim_sup].sum(axis=(0,1)) #create the "estimate"/"ground truth"
+        self.base_model.fit(X, r_estimate, batch_size=self.batch_size, epochs=self.epochs,verbose=0) 
+
+        #-------> alpha 
+        Qil_m_flat = self.Qil_mgamma.sum(axis=-1)  #qil(m)
+        self.group_model.fit(A_idx_flatten, Qil_m_flat, batch_size=self.BS_groups, epochs=self.group_epochs,verbose=0)
+
+        #-------> beta
+        self.betas =  np.tensordot(self.Qil_mgamma, y_ann_flatten , axes=[[0],[0]]) # ~p(yo=j|g,z) 
+        self.betas += self.Bpriors 
+
+        #if no priors were seted as annotator not label all data:---
+        mask_zero = self.betas.sum(axis=-1) == 0
+        self.betas[mask_zero] = 1
+
+        self.betas = self.betas/self.betas.sum(axis=-1,keepdims=True) #normalize (=p(yo|g,z))
+
+    def compute_logL(self):
+        logL_priors = np.sum(self.Bpriors* np.log(self.betas+ self.Keps))
+        return np.sum( np.log(self.aux_for_like+self.Keps) )  #safe logarithm
+                                                  
+    def train(self, X_train, y_ann_var, A_idx_var, max_iter=50,relative=True,tolerance=3e-2):
+        if not self.compile_z:
+            print("You need to create the model first, set .define_model")
+            return
+        if len(y_ann_var.shape) != 1 or len(A_idx_var.shape) != 1:
+            print("ERROR! Needed Y and T_idx in variable length array")
+            return
+
+        y_ann_flatten, A_idx_flatten = self.flatten_il(y_ann_var), self.flatten_il(A_idx_var)
+        A = np.unique(A_idx_flatten).reshape(-1,1) # A: annotator identity set
+        if not self.init_done:
+            self.init_E(y_ann_var, A_idx_var)
+            if self.n_init_Z != 0:
+                pre_init_F(self.base_model, X_train, self.init_GT, self.n_init_Z, batch_size=self.batch_size)
+                self.init_GT = None
+            if self.n_init_G != 0:
+                pre_init_F(self.group_model, A_idx_flatten, self.flatten_il(self.alpha_init), self.n_init_G, batch_size=self.BS_groups)
+
+        logL = []
+        stop_c = False
+        tol,old_betas = np.inf,np.inf
+        self.current_iter = 1
+        while(not stop_c):
+            start_time = time.time()
+            print("Iter %d/%d\nM step:"%(self.current_iter,max_iter),end='',flush=True)
+            self.M_step(X_train, y_ann_flatten, A_idx_flatten)
+            print(" done,  E step:",end='',flush=True)
+            predictions_z = self.get_predictions_z(X_train)  # p(z|x)
+            predictions_g = self.get_predictions_g(A) # p(g|t)
+            self.E_step(X_train, y_ann_flatten, A_idx_flatten, predictions_z, predictions_g)
+            self.current_exectime = time.time()-start_time
+            print(" done //  (in %.2f sec)\t"%(self.current_exectime),end='',flush=True)
+            logL.append(self.compute_logL())
+            print("logL: %.3f\t"%(logL[-1]),end='',flush=True)
+            if self.current_iter>=2:
+                tol = np.abs(logL[-1] - logL[-2])                    
+                if relative:
+                    tol = tol/np.abs(logL[-2])
+                tol2 = np.mean(np.abs(self.betas.flatten()-old_betas)/(old_betas+self.Keps)) #confusion
+                print("Tol1: %.5f\tTol2: %.5f\t"%(tol,tol2),end='',flush=True)
+            old_betas = self.betas.flatten().copy()         
+            self.current_iter+=1
+            print("")
+            if self.current_iter>max_iter or (tol<=tolerance and tol2<=tolerance):
+                stop_c = True 
+        print("Finished training!")
+        return np.asarray(logL)
+    
+    def stable_train(self, X, y_ann_var, A_idx_var, max_iter=50,tolerance=3e-2):
+        """
+            A stable schedule to train a model on this formulation
+        """
+        logL_hist = self.train(X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance)
+        return logL_hist
+    
+    def multiples_run(self,Runs,X, y_ann_var, A_idx_var, max_iter=50,tolerance=3e-2): 
+        if Runs==1:
+            return self.stable_train(X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance), 0
+            
+        found_betas = []
+        found_model_g = []
+        found_model_z = []
+        found_logL = []
+        iter_conv = []
+        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
+            obj_clone_z = Clonable_Model(self.base_model) #architecture to clone
+        else:
+            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
+            obj_clone_z = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
+
+        if type(self.group_model.layers[0]) == keras.layers.InputLayer:
+            obj_clone_g = Clonable_Model(self.group_model) #architecture to clone
+        else:
+            it = keras.layers.Input(shape=self.group_model.input_shape[1:])
+            obj_clone_g = Clonable_Model(self.group_model, input_tensors=it) #architecture to clon
+
+        for run in range(Runs):
+            self.base_model = obj_clone_z.get_model() #reset-weigths
+            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            
+            self.group_model = obj_clone_g.get_model() #reset-weigths
+            self.group_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+
+            logL_hist = self.train(X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance)
+            
+            found_betas.append(self.betas.copy())
+            found_model_g.append(self.group_model.get_weights())
+            found_model_z.append(self.base_model.get_weights()) 
+            found_logL.append(logL_hist)
+            iter_conv.append(self.current_iter-1)
+            
+            self.init_done = False
+            del self.base_model, self.group_model
+            keras.backend.clear_session()
+            gc.collect()
+        #setup the configuration with maximum log-likelihood
+        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        indexs_sort = np.argsort(logL_iter)[::-1] 
+        
+        self.betas = found_betas[indexs_sort[0]].copy()
+        self.base_model = obj_clone_z.get_model()
+        self.base_model.set_weights(found_model_z[indexs_sort[0]])
+        self.group_model = obj_clone_g.get_model()
+        self.group_model.set_weights(found_model_g[indexs_sort[0]]) 
+        self.E_step(X, self.flatten_il(y_ann_var), self.flatten_il(A_idx_var)) #to set up Q
+        print(Runs,"runs over C-MoA, Epochs to converge= ",np.mean(iter_conv))
+        return found_logL,indexs_sort[0]
+
+    def fit(self,X, y_ann_var, A_idx_var, runs = 1, max_iter=50, tolerance=3e-2):
+        return self.multiples_run(runs, X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance)
+    
+    def get_predictions_groups(self,X,data=[]):
+        """ Predictions of all groups , p(y^o | xi, g) """
+        if len(data) != 0:
+            prob_Z_ik = data
+        else:
+            prob_Z_ik = self.get_predictions_z(X)
+        return np.tensordot(prob_Z_ik ,self.betas,axes=[[1],[1]] ) #sum_z p(z|xi) * p(yo|z,g)
+    
+    def get_ann_confusionM(self, A):
+        prob_G_t = self.get_predictions_g(A)
+        return np.tensordot(prob_G_t, self.get_confusionM(),axes=[[1],[0]])  #p(y^o|z,t) = sum_g p(g|t) * p(yo|z,g)
+
+    def get_global_confusionM(self, prob_Gt):
+        alphas = np.mean(prob_Gt, axis=0)
+        return np.sum(self.betas*alphas[:,None,None],axis=0)

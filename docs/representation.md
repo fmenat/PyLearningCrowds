@@ -4,6 +4,31 @@ from codeE.representation import ...
 ```
 Function to change representation in the crowdsourcing scenario
 
+##### Examples
+```python
+... #read some data 
+y_obs = ... #classes of shape of (n_samples, n_annotators) not annotation symbol =-1
+```
+> Change representation to global
+```python
+from codeE.representation import set_representation
+r_obs = set_representation(y_obs,"global")
+print("Global representation shape (N,K)= ",r_obs.shape)
+```
+> Change representation to individual - dense
+```python
+from codeE.representation import set_representation
+y_obs_categorical = set_representation(y_obs, 'onehot') 
+print("Individual representation shape (N,T,K)= ",y_obs_categorical.shape)
+```
+> Change representation to individual - sparse
+```python
+from codeE.representation import set_representation
+y_cat_var, A_idx_var = set_representation(y_obs, 'onehotvar') 
+print("Individual sparse representation, variable shape (N,)= ",y_cat_var.shape)
+print("one-hot vectors of K-dimensions, K=",y_cat_var[0].shape[1])
+```
+
 ---
 ### Transform representation 
 ```python
@@ -53,7 +78,3 @@ The number of the classes of the data
 **Returns**  
 * **r_obs: *array-like of shape (n_samples, n_classes)***  
 The global representation.
-
-
-SET Option1: A_train, A = get_A_il(X, T=T) 
-SET Option2: A_train, A = get_A_il(X, A=A) #if you already  had a representation for annotators
