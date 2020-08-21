@@ -22,9 +22,6 @@ def f1score_model(model,X_data, Z_data, mode='macro'):
     return f1_score(Z_data, Z_hat, average=mode)
 
 def D_KL(conf_true, conf_pred, raw=False):
-    """
-        * mean of KL between rows of confusion matrix: 1/K sum_z KL_y(p(y|z)|q(y|z))
-    """ 
     conf_pred = np.clip(conf_pred, 1e-7, 1.)
     conf_true = np.clip(conf_true, 1e-7, 1.)
     to_return = np.asarray([entropy(conf_true[j_z,:], conf_pred[j_z,:]) for j_z in range(conf_pred.shape[0])])
@@ -32,10 +29,7 @@ def D_KL(conf_true, conf_pred, raw=False):
         return np.mean(to_return)
     return to_return
 
-def D_JS(conf_true, conf_pred, raw=False):
-    """
-        * Jensen-Shannon Divergence between rows of confusion matrix (arithmetic average)
-    """             
+def D_JS(conf_true, conf_pred, raw=False):           
     aux = (conf_pred + conf_true)/2.
     return (D_KL(conf_pred, aux, raw) + D_KL(conf_true, aux, raw))/(2*np.log(2)) 
     
@@ -56,35 +50,28 @@ def I_sim(conf_ma, D=D_JS):
     return 1 - D(conf_ma, I)
 
 def H_conf(conf_ma):
-    """
-        * Mean of entropy on rows of confusion matrix: mean H(q(y|z))
-    """
     conf_ma = np.clip(conf_ma, 1e-7, 1.)
     K = len(conf_ma)
     return np.mean([entropy(conf_ma[j_z]) for j_z in range(K)])/np.log(K)
 
-def S_bias(conf_ma):
-    """Score to known if p(y|something) == p(y) """
-    p_y = conf_ma.mean(axis=0) #prior anotation
-    if mode=="entropy":        
-        return entropy(p_y)
-    elif mode == "median":
-        return (p_y.max() - np.median(p_y)), p_y.argmax()
-    elif mode == "simple":
-        return p_y.max(), p_y.argmax() 
-    #elif mode == "mean": #not so good
-    #    return p_y.max() - p_y.mean()
-    #elif mode =="real":
-    #return np.mean([conf_ma[l,:] - np.mean(np.delete(conf_ma[l,:],l))  for l in range(len(conf_ma))] )
-
 def S_score(conf_ma):
-	"""Mean - off diagonal: based on Raykar logits"""
 	return np.mean([conf_ma[l,l]- np.mean(np.delete(conf_ma[:,l],l)) for l in range(len(conf_ma))])
 
-def R_mean(conf_ma):
-	"""Calculate the Mean of the diagional of the confusion matrixs"""
+def R_score(conf_ma):
 	return np.mean([conf_ma[l,l] for l in range(len(conf_ma)) ])
 
+def S_bias(conf_ma, mode="entropy"):
+    """Score to known if p(y|something) == p(y) """
+    p_y = conf_ma.mean(axis=0) #prior anotation
+
+    b_C= p_y.argmax() #no recuerdo ...
+    if mode=="entropy":      
+        p_y = np.clip(p_y, 1e-7, 1.)  
+        return entropy(p_y + 1e-7)/np.log(len(p_y)), b_C
+    elif mode == "median":
+        return (p_y.max() - np.median(p_y)), b_C
+    elif mode == "simple":
+        return p_y.max(), b_C
 
 def run_from_ipython():
     try:

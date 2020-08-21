@@ -5,7 +5,7 @@ from .learning_models import default_CNN,default_RNN,CNN_simple, RNN_simple, def
 from .representation import *
 from .utils import estimate_batch_size, EarlyStopRelative, pre_init_F, clusterize_annotators
 
-class LabelAggregation(object): #no predictive model
+class LabelAgg(object): #no predictive model
     def __init__(self, scenario="global", sparse=False): 
         #individual assume dense
         self.scenario = scenario
@@ -55,7 +55,7 @@ class LabelAggregation(object): #no predictive model
         return self.infer(*args)
 
 
-class LabelInference_EM(object): #DS
+class LabelInf_EM(object): #DS
     def __init__(self,init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32'):
         self.DTYPE_OP = DTYPE_OP
         self.init_Z = init_Z.lower()
@@ -96,7 +96,7 @@ class LabelInference_EM(object): #DS
         #init p(z|x)
         if method == "":
             method = self.init_Z
-        label_A = LabelAggregation(scenario="individual")
+        label_A = LabelAgg(scenario="individual")
         init_GT = label_A.infer(y_ann, method=method, onehot=True)
         #init betas
         self.betas = np.zeros((self.T,self.K,self.K),dtype=self.DTYPE_OP)
@@ -187,7 +187,7 @@ class LabelInference_EM(object): #DS
         return self.infer()
 
 
-class ModelInference_EM(object):
+class ModelInf_EM(object):
     def __init__(self, init_Z='softmv', n_init_Z= 0, priors=0, DTYPE_OP='float32'):
         self.DTYPE_OP = DTYPE_OP
         self.init_Z = init_Z.lower()
@@ -244,7 +244,7 @@ class ModelInference_EM(object):
         #init p(z|x)
         if method == "":
             method = self.init_Z
-        label_A = LabelAggregation(scenario="individual")
+        label_A = LabelAgg(scenario="individual")
         init_GT = label_A.infer(y_ann, method=method, onehot=True)
         #init betas
         self.betas = np.zeros((self.T,self.K,self.K),dtype=self.DTYPE_OP)
@@ -380,11 +380,7 @@ class ModelInference_EM(object):
         predictions_a= np.tensordot(p_z ,self.betas,axes=[[1],[1]] ) # sum_z p(z|xi) * p(yo|z,t)
         return predictions_a  
     
-"""
-    MIXTURE MODEL NOT KNOWING THE IDENTITY
-    >>> CMM (CROWD MIXTURE OF MODEL) <<<
-"""
-class CMM(object): 
+class ModelInf_EM_CMM(object): 
     def __init__(self, M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32'):
         self.DTYPE_OP = DTYPE_OP
         self.init_Z = init_Z.lower()
@@ -447,7 +443,7 @@ class CMM(object):
         #-------> init Majority voting    
         if method == "":
             method = self.init_Z
-        label_A = LabelAggregation(scenario="global")
+        label_A = LabelAgg(scenario="global")
         self.init_GT = label_A.infer(r_ann, method=method, onehot=True)
 
         #-------> init alpha
@@ -635,11 +631,7 @@ class CMM(object):
         return result/result.sum()
 
 
-"""
-    MIXTURE MODEL KNOWING IDENTITY
-    >>> C-MOA (CROWD - MIXTURE OF ANNOTATORS) <<<
-"""
-class CMOA(object):
+class ModelInf_EM_CMOA(object):
     def __init__(self, M, init_Z="softmv", n_init_Z=0, n_init_G=0, priors=0, DTYPE_OP='float32'): 
         self.DTYPE_OP = DTYPE_OP
         self.init_Z = init_Z.lower()
@@ -741,7 +733,7 @@ class CMOA(object):
         #-------> init Majority voting    
         if method == "":
             method = self.init_Z
-        label_A = LabelAggregation(scenario="individual", sparse=True)
+        label_A = LabelAgg(scenario="individual", sparse=True)
         self.init_GT = label_A.infer(y_ann_var, method=method, onehot=True)
         
         #------->init p(g|a)

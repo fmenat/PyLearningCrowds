@@ -1,29 +1,34 @@
-## State of the art methods in crowdsourcing
+## Crowdsourcing Methods
 ```python
 from codeE.methods import ...
 ```
-Methods proposed in the crowdsourcing scenario, also called learning from crowds.
+State of the art methods proposed in the crowdsourcing scenario, also called *learning from crowds*.
 
-To problem notation see...
+To problem notation see the [documentation](notation.md)
 
-LINKS INICIAL A CADA METODO Y DE CADA METODO ACA AL INICIO...
+The available methods:
+* [Majority Voting](#simple-aggregation-techniques): soft, hard, weighted  
+* [Dawid and Skene](#label-inference-based-on-em---confusion-matrix) ground truth (GT) inference based on confusion matrices (CM) of annotators.   
+* [Raykar et al](#model-inference-based-on-em---confusion-matrix): predictive model over GT inference based on CM of annotators  
+* [Crowd Mixture Model](#model-and-annotations-group-inference-based-on-em---confusion-matrix) inference of model and groups on annotations of the data  
+* [Crowd - Mixture of Annotators](#model-and-annotators-group-inference-based-on-em---confusion-matrix) inference of model and groups on annotations of the annotators  
 
 ---
 ### Simple aggregation techniques
 ```python
-class codeE.methods.LabelAggregation(scenario="global")
+class codeE.methods.LabelAgg(scenario="global")
 ```
+[UP](#crowdsourcing-methods)
 
 Methods that reduced the multiple annotations *y* to a single target for each input pattern *x*. The goal is to define a ground truth *z* as a function of the annotations, for example summary statistic such as the mean, the median or the mode. 
 
 The most used and simple technique corresponds to Majority Voting (MV) [1], which can handle both scenario setting, individual or global.
+> It can handle both representation: *individual* and *dense* (for further details see [representation documentation](representation.md))
 
 **Parameters**  
 * **scenario: *string, {'global','individual'}, default='global'***  
-The scenario in which the annotations will be aggregated. Subject to the representation format, for further details see the Representation documentation.
+The scenario in which the annotations will be aggregated. Subject to the representation format, for further details see the [representation](representation.md) documentation.
 
-**Attributes**
-* scenario..
 
 ##### References
 [1] [Sheng, V. S., Provost, F., & Ipeirotis, P. G. (2008, August). *Get another label? improving data quality and data mining using multiple, noisy labelers*.](https://archive.nyu.edu/bitstream/2451/25882/4/kdd2008.pdf)  
@@ -40,29 +45,29 @@ r_obs = set_representation(y_obs,"global")
 ```
 > Infer over global scenario
 ```python
-from codeE.methods import LabelAggregation
-label_A = LabelAggregation(scenario="global")
+from codeE.methods import LabelAgg
+label_A = LabelAgg(scenario="global")
 mv_soft = label_A.infer(  r_obs, 'softMV')
 mv_hard = label_A.predict(r_obs, 'hardMV')
 ```
 > Infer over individual - sparse scenario
 ```python
-from codeE.baseline import LabelAggregation
-label_A = LabelAggregation(scenario="individual", sparse=True)
+from codeE.baseline import LabelAgg
+label_A = LabelAgg(scenario="individual", sparse=True)
 mv_soft = label_A.infer(  y_cat_var, 'softMV')
 mv_hard = label_A.predict(y_cat_var, 'hardMV')
 ```
 > Infer over individual - dense scenario
 ```python
-from codeE.baseline import LabelAggregation
-label_A = LabelAggregation(scenario="individual")
+from codeE.baseline import LabelAgg
+label_A = LabelAgg(scenario="individual")
 mv_soft = label_A.infer(  y_obs_categorical, 'softMV')
 mv_hard = label_A.predict(y_obs_categorical, 'hardMV')
 ```
 > Weighted (individual - dense scenario)
 ```python
-from codeE.baseline import LabelAggregation
-label_A = LabelAggregation(scenario="individual")
+from codeE.baseline import LabelAgg
+label_A = LabelAgg(scenario="individual")
 T_weights = np.sum(y_obs_categorical.sum(axis=-1) == 0, axis=0) #number of annotations given per annotator
 Wmv_soft = label_A.infer(y_obs_categorical, 'softMV', weights=T_weights)
 Wmv_soft
@@ -111,16 +116,18 @@ same operation than infer function.
 ---
 ### Label inference based on EM - Confusion Matrix
 ```python
-class codeE.methods.LabelInference_EM(init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32')
+class codeE.methods.LabelInf_EM(init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32')
 ```
+[UP](#crowdsourcing-methods)
 
 Method that infers the ground truth label with a probabilistic framework based on the EM algorithm [1]. It represent the annotators ability as a confusion matrix to detect the ground truth <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = p(y=j | z=k, a=t) ">
 
 This method is proposed on the framework of Dawid and Skene (D&S) [2].
+> It is proposed on the *individual dense* representation ((for further details see [representation documentation](representation.md)))
 
 **Parameters**  
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAgg class. 
 * **priors: *different options***  
 The priors to be set on the confusion matrices of annotators, could be in different formats:
 	* *string, {'laplace','none'}*  
@@ -139,8 +146,6 @@ If the fast estimation of the method is used. This correspond to perform a discr
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
-**Attributes**
-* ...
 
 ##### References
 [1] [Dempster, A. P., Laird, N. M., & Rubin, D. B. (1977). *Maximum likelihood from incomplete data via the EM algorithm*](http://www.eng.auburn.edu/~troppel/courses/7970%202015A%20AdvMobRob%20sp15/literature/paper%20W%20refs/dempster%20EM%201977.pdf)  
@@ -157,13 +162,13 @@ y_obs_categorical = set_representation(y_obs,'onehot')
 ```
 > Train the model
 ```python
-from codeE.methods import LabelInference_EM as DS
+from codeE.methods import LabelInf_EM as DS
 DS_model = DS(init_Z='softmv')
 hist = DS_model.fit(y_obs_categorical)
 ```
 > Train with different settings 
 ```python
-from codeE.methods import LabelInference_EM as DS
+from codeE.methods import LabelInf_EM as DS
 DS_model = DS(init_Z='hardmv', priors=1, fast=True) 
 hist = DS_model.fit(y_obs_categorical)
 ```
@@ -229,7 +234,7 @@ Initialization of the E-step based on *method*.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k | i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k | i)">. Both posibilities are based on LabelAgg class. The empty string will use the method seted on init.
 
 ```python
 E_step(y_ann)
@@ -295,17 +300,20 @@ same operation than infer function.
 ---
 ### Model Inference based on EM - Confusion Matrix
 ```python
-class codeE.methods.ModelInference_EM(init_Z='softmv', n_init_Z=0, priors=0, DTYPE_OP='float32')
+class codeE.methods.ModelInf_EM(init_Z='softmv', n_init_Z=0, priors=0, DTYPE_OP='float32')
 ```
+[UP](#crowdsourcing-methods)
+
 
 This method set a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)">
  of the ground truth inside the inference for joint learning. It also represent the annotators ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = p(y=j | z=k, a=t)"> and allows any model on *f()*.
 
-The original idea was proposed by Raykar et al. [1]
+The original idea was proposed by Raykar et al. [1].
+> It is proposed on the *individual dense* representation. (for further details see [representation documentation](representation.md))
 
 **Parameters**  
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=q_i(z=k)=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=q_i(z=k)=p(z=k|x_i)">. Both posibilities are based on LabelAgg class. 
 * **n_init_Z: *int, default=0***  
 The number of epochs that the predictive model is going to be pre-trained.
 * **priors: *different options***  
@@ -324,8 +332,6 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
-**Attributes**
-* ...
 
 ##### References
 [1] [Raykar, V. C., Yu, S., Zhao, L. H., Valadez, G. H., Florin, C., Bogoni, L., & Moy, L. (2010). *Learning from crowds.*](https://www.jmlr.org/papers/volume11/raykar10a/raykar10a.pdf)  
@@ -347,7 +353,7 @@ F_model = Sequential()
 ```
 > Set the model and train the method
 ```python
-from codeE.methods import ModelInference_EM as Raykar
+from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar(init_Z="softmv")
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 R_model.set_model(F_model, **args)
@@ -355,7 +361,7 @@ R_model.fit(Xstd_train, y_obs_categorical)
 ```
 > Train with different settings 
 ```python
-from codeE.methods import ModelInference_EM as Raykar
+from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar(init_Z="softmv", priors='laplace')
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 R_model.set_model(F_model, **args)
@@ -438,7 +444,7 @@ Initialization of the E-step based on *method*.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAgg class. The empty string will use the method seted on init.
 
 ```python
 E_step(X, y_ann, predictions=[])
@@ -542,21 +548,22 @@ If the probability predictions of the ground truth over some set are delivered
 The probability estimation of labels over some set for each annotator <img src="https://render.githubusercontent.com/render/math?math=p(y|x, t) = \sum_{z} p(y|z,t) p(z|x) ">.
 
 ---
-### NOMRBE : Model Inference based on EM - Confusion Matrix
+### Model and Annotations Group Inference based on EM - Confusion Matrix
 ```python
-class codeE.methods.NOMBRE(M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32')
+class codeE.methods.ModelInf_EM_CMM(M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32')
 ```
-CAMBIAR NOMBRE A ALGO COMO MODELINFENRECE_EM_GROUPS
+[UP](#crowdsourcing-methods)
 
-This method infer a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> of the ground truth jointly with the ground truth inference based on groups over the data annotations. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)} = p(y=j | z=k, g=m)"> and allows any model on *f()*.
+This method infer a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> of the ground truth jointly with the ground truth inference based on **groups over the data annotations**. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)} = p(y=j | z=k, g=m)"> and allows any model on *f()*.
 
-The original CMM (*Crowd Mixture Model*) method was proposed by Mena et al. [1]
+The original CMM (*Crowd Mixture Model*) method was proposed by Mena et al. [1].
+> It is proposed on the *global* representation. (for further details see [representation documentation](representation.md))
 
 **Parameters**  
 * **M: *int***  
 The number of groups (*n_groups*) to be found (*different types of behaviors*) in the annotations.
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAgg class. 
 * **n_init_Z: *int, default=0***  
 The number of epochs that the predictive model is going to be pre-trained.
 * **priors: *different options***  
@@ -575,12 +582,10 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
-**Attributes**
-* ...
 
 ##### References
 [1] [Mena, F., & Ñanculef, R. (2019, October). *Revisiting Machine Learning from Crowds a Mixture Model for Grouping Annotations*](https://link.springer.com/chapter/10.1007/978-3-030-33904-3_46)  
-[2] falta paper de IDA
+[2] [Mena, F., Ñanculef, R., & Valles, C. (2020). *Collective Annotation Patterns in Learning from Crowds*]()
 
 ##### Examples
 ```python
@@ -596,7 +601,7 @@ F_model = Sequential()
 ```
 > Set the model and train the method
 ```python
-from codeE.methods import NOMBRE as CMM
+from codeE.methods import ModelInf_EM_CMM as CMM
 CMM_model = CMM(M=3)
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMM_model.set_model(F_model, **args)
@@ -604,7 +609,7 @@ CMM_model.fit(Xstd_train, r_obs)
 ```
 > Train with different settings 
 ```python
-from codeE.methods import NOMBRE as CMM
+from codeE.methods import ModelInf_EM_CMM as CMM
 CMM_model = CMM(M=3, init_Z='softmv', n_init_Z=3, priors=0) 
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMM_model.set_model(F_model, **args)
@@ -705,7 +710,7 @@ The groups *g* initialization is based on a K-means clustering and the ground tr
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAgg class. The empty string will use the method seted on init.
 
 ```python
 E_step(X, predictions=[])
@@ -825,23 +830,24 @@ If the probability predictions of the ground truth over some set are delivered
 The probability estimation of labels over some set for each group <img src="https://render.githubusercontent.com/render/math?math=p(y|x, g) = \sum_z p(y|z, g) p(z|x)">.
 
 ---
-### NOMRBE2 : Model Inference based on EM - Confusion Matrix
+### Model and Annotators Group Inference based on EM - Confusion Matrix
 ```python
-class codeE.methods.NOMBRE2(M, init_Z="softmv", n_init_Z=0, n_init_G=0, priors=0, DTYPE_OP='float32')
+class codeE.methods.ModelInf_EM_CMOA(M, init_Z="softmv", n_init_Z=0, n_init_G=0, priors=0, DTYPE_OP='float32')
 ```
-CAMBIAR NOMBRE A ALGO COMO MODELINFENRECE_EM_GROUPS
+[UP](#crowdsourcing-methods)
 
-This method infer a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> of the ground truth jointly with the ground truth inference based on groups over the annotations of the annotators. Contrary to other methods, it does not have an explicit model per annotators. It represents the **groups** ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)} = p(y=j | z=k, g=m)"> and allows any model on *f()*.
+This method infer a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> of the ground truth jointly with the ground truth inference based on **groups over the annotations of the annotators**. Contrary to other methods, it does not have an explicit model per annotators. It represents the groups ability as a confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)} = p(y=j | z=k, g=m)"> and allows any model on *f()*.
 
 It requieres a *group model* that assign annotators *a* to groups *g*:  <img src="https://render.githubusercontent.com/render/math?math=h(a)= p(g|a)">
 
 The original C-MoA (*Crowd - Mixture of Annotators*) method was proposed by Mena et al. [2]
+> It is proposed on the *individual sparse* representation. (for further details see [representation documentation](representation.md))
 
 **Parameters**  
 * **M: *int***  
 The number of groups (*n_groups*) to be found (*different types of behaviors*) in the annotations.
 * **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. 
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAgg class. 
 * **n_init_Z: *int, default=0***  
 The number of epochs that the predictive model is going to be pre-trained.
 * **n_init_G: *int, default=0***  
@@ -862,12 +868,10 @@ The priors to be set on the confusion matrices of groups, could be in different 
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
-**Attributes**
-* ...
 
 ##### References
 [1] [Mena, F., & Ñanculef, R. (2019, October). *Revisiting Machine Learning from Crowds a Mixture Model for Grouping Annotations*](https://link.springer.com/chapter/10.1007/978-3-030-33904-3_46)  
-[2] falta paper de IDA
+[2] [Mena, F., Ñanculef, R., & Valles, C. (2020). *Collective Annotation Patterns in Learning from Crowds*]()
 
 ##### Examples
 ```python
@@ -892,7 +896,7 @@ group_model.add(Reshape([K]))
 ```
 > Set the model and train the method
 ```python
-from codeE.methods import NOMBRE as CMOA
+from codeE.methods import ModelInf_EM_CMOA as CMOA
 CMOA_model = CMOA(M=3) 
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMOA_model.set_model(F_model, ann_model=group_model, **args)
@@ -900,7 +904,7 @@ CMOA_model.fit(Xstd_train, y_cat_var, A_idx_var)
 ```
 > Train with different settings (**you must create the keras model again**)
 ```python
-from codeE.methods import NOMBRE as CMOA
+from codeE.methods import ModelInf_EM_CMOA as CMOA
 CMOA_model = CMOA(M=3, init_Z='softmv', n_init_Z=0, n_init_G=0, priors=1) 
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMOA_model.set_model(F_model, ann_model=group_model, **args)
@@ -1017,7 +1021,7 @@ Annotations of the data, should be on a categorical representation of variable l
 * **A_idx_var: *array-like of shape (n_samples,) of arrays of shape (n_annotations(i),)***  
 Identifier of the annotator of each annotations in *y_ann_var*.
 * **method: *string, {'softmv','hardmv',''}, default=''***  
-The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAggregation class. The empty string will use the method seted on init.
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAgg class. The empty string will use the method seted on init.
 
 
 ```python

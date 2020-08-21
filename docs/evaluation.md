@@ -2,7 +2,18 @@
 ```python
 from codeE.evaluation import ...
 ```
-Function to use in evaluation on crowdsourcing scenario
+Function to use in evaluation on crowdsourcing scenario.
+
+The available evaluation metrics/indicators are:
+* [Accuracy](#accuracy-by-model)
+* [F1-Score](#f1-score-by-model)
+* [D_JS](#error-on-confusion-matrix-estimation-by-js)
+* [D_NormF](#error-on-confusion-matrix-estimation-by-normf)
+* [Ind_D](#error-on-set-of-confusion-matrices-estimation)
+* [I_sim](#expertise-identity-of-confusion-matrix)
+* [R_score](#expertise-diagonal-of-confusion-matrix)
+* [H_conf](#entropy-of-confusion-matrix)
+* [S_score](#spammer-score-of-confusion-matrix)
 
 ---
 ### Accuracy by model
@@ -218,7 +229,7 @@ The indicator of similarity to I, value between 0 and 1.
 ---
 ### Expertise Diagonal of Confusion Matrix
 ```python
-codeE.evaluation.R_mean(conf_ma)
+codeE.evaluation.R_score(conf_ma)
 ```
 An indicator associated to expert behavior. Average between the probabilities on the **diagonal of the confusion matrix**.  
 <img src="https://render.githubusercontent.com/render/math?math=R_{score}(\hat{\beta}^{(g)}_{z,y}) = \frac{1}{K}  \sum_{k=1}^K  \hat{\beta}_{k,k}^{(g)}">
@@ -290,9 +301,9 @@ beta_ex = generate_Global_conf(Z, R)
 ```
 > Indicators to analize the random matrix generated:
 ```python
-from codeE.evaluation import I_sim, R_mean, H_conf, S_score
+from codeE.evaluation import I_sim, R_score, H_conf, S_score
 print("Expertise Identity (I_sim) =", I_sim(beta_ex))
-print("Expertise Diagonal (R_mean) =", R_mean(beta_ex))
+print("Expertise Diagonal (R_score) =", R_score(beta_ex))
 print("Randomness (H_conf) =", H_conf(beta_ex))
 print("Spammer score (S_score) =", S_score(beta_ex))
 ```
@@ -302,9 +313,9 @@ beta_ex = np.identity(K) + np.random.normal(0, 1e-2, size=(K,K))
 ```
 > Analize:
 ```python
-from codeE.evaluation import I_sim, R_mean, H_conf, S_score
+from codeE.evaluation import I_sim, R_score, H_conf, S_score
 print("Expertise Identity (I_sim) =", I_sim(beta_ex))
-print("Expertise Diagonal (R_mean) =", R_mean(beta_ex))
+print("Expertise Diagonal (R_score) =", R_score(beta_ex))
 print("Randomness (H_conf) =", H_conf(beta_ex))
 print("Spammer score (S_score) =", S_score(beta_ex))
 ```

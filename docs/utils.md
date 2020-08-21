@@ -50,7 +50,7 @@ To generate the global confusion matrix of the multiple annotations <img src="ht
 * **Z_data: *array-like of shape (n_samples, n_classes) or (n_samples,)***  
 The ground truth of the data, could be in both format, classes or one-hot vector.
 * **annotations: *array-like of shape (n_samples, n_annotators, n_classes) or (n_samples, n_classes)***  
-The annotations observed by the data, could be in both format: individual (categorical one-hot) or global. For further details see documentation of representation.
+The annotations observed by the data, could be in both format: individual (categorical one-hot) or global. For further details see [representation documentation](representation.md).
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
 
