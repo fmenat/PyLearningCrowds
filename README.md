@@ -5,10 +5,10 @@ Learning from crowds methods implemented in Python. The available methods:
 * **Raykar et al**: predictive model over GT inference based on CM of annotators
 * **Mixture Models**: inference of model and groups on annotations of the data or the annotators
 
-For tutorial examples of the methods see the Notebooks tutorials on:
-* [LabelMe](./Tutorial%20-%20LabelMe.ipynb): a real images dataset
-* [Sentiment](): a real text dataset
-* [Synthetic](): a synthetic dataset
+For examples of how to use the methods see the notebooks **Tutorials** on:
+* [LabelMe](./Tutorial%20-%20LabelMe.ipynb): a real image dataset
+* [Sentiment](./Tutorial%20-%20Sentiment.ipynb): a real text dataset
+* [Synthetic](./Tutorial%20-%20Synthetic.ipynb): a synthetic dataset
 
 ---
 ### Documentation
@@ -18,7 +18,7 @@ For tutorial examples of the methods see the Notebooks tutorials on:
 * [Representation](./docs/representation.md)
 * [Utils](./docs/utils.md)
 
-
+---
 #### Example
 > Read some dataset annotations
 ```python
@@ -76,7 +76,6 @@ For the other available methods see the [methods documentation](./docs/methods.m
 #### Extensions
 * Fast estimation, based on hard or discrete, on other methods besides DS
 * Methods with predictive model include support for sklearn
-* Visualization
 * Other initialization on EM
 * Rodrigues et al. 2013
 * Guan et al. 2018

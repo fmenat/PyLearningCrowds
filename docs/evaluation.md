@@ -14,6 +14,7 @@ The available evaluation metrics/indicators are:
 * [R_score](#expertise-diagonal-of-confusion-matrix)
 * [H_conf](#entropy-of-confusion-matrix)
 * [S_score](#spammer-score-of-confusion-matrix)
+* [S_bias](#bias-score-of-confusion-matrix)
 
 ---
 ### Accuracy by model
@@ -61,7 +62,7 @@ codeE.evaluation.f1score_model(model, X_data, Z_data, mode='macro')
 Quality evaluation of some predictive model over some set *X* and ground truth *Z*, based on **F1-score**.  
 <img src="https://render.githubusercontent.com/render/math?math=F_1 = 2\frac{P\cdot R}{P%2BR}">
 
-* With <img src="https://render.githubusercontent.com/render/math?math=P = \frac{Tp}{Tp%2BFp} \ \ \ \ R = \frac{Tp}{Tp%2BFn}">
+* With <img src="https://render.githubusercontent.com/render/math?math=P = \frac{Tp}{Tp%2BFp} \ \ \ \ R = \frac{Tp}{Tp%2BFn}"> the *precision* and *recall* respectively.
 
 *Tp* is the number of true positives, *Tn* is the number of true negatives, *Fp* is the number of false positives and *Fn* the number of false negatives.
 
@@ -328,29 +329,25 @@ codeE.evaluation.S_bias(conf_ma, mode="median")
 ```
 
 An indicator associated to the **bias** on the behavior. It is based on the marginal (a-priori) probability over annotations
-<img src="https://render.githubusercontent.com/render/math?math=... ">
+<img src="https://render.githubusercontent.com/render/math?math=p_{y}^{(g)} = p(y\mid g ) = \frac{1}{K} \sum_{k=1}^K \hat{\beta}_{k,y}^{(g)} ">
 
 *  With <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}^{(g)}_{z,y}"> some confusion matrix to analize, the rows correspond to the ground truth labels *z* and the columns the observed labels *y*.
 
-Over a row: positive values are for more expert, negative for more malicious. A value *=0* correspond to *random spammer* behavior, *=1* to *expert* and *=-1* to *malicious spammer*.
+A higher value means more bias *b* for some *c* class.
 
 **Parameters**  
 * **conf_ma: *array-like of shape (n_classes, n_classes)***  
 A confusion matrix of probabilistic behavior, <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}^{(g)}_{z,y}">
+* **mode: *{'simple','median','entropy'}, default='median'***  
+The type of which the score of bias *b* will be calculated:
+> *simple*: <img src="https://render.githubusercontent.com/render/math?math=b = \max \left(p_{y}^{(g)}\right)"> 
+
+> *median*: <img src="https://render.githubusercontent.com/render/math?math=b = \max \left(p_{y}^{(g)}\right) - \text{median}\left(p_{y}^{(g)}\right)">
+
+> *entropy*: <img src="https://render.githubusercontent.com/render/math?math=b = \mathbb{H}(p_{y}^{(g)})/\log{K}">
 
 **Returns**  
+* **class_bias: *int***  
+The index of the class *c* at which is biased the matrix, a value between *0* and *n_classes-1*. <img src="https://render.githubusercontent.com/render/math?math=c = \arg\max_{y} p_{y}^{(g)} ">
 * **res: *float***  
-The indicator of spammer score, value between -1 and 1.
-
-S_bias(conf_ma, mode="entropy"):
-    """Score to known if p(y|something) == p(y) """
-    p_y = conf_ma.mean(axis=0) #prior anotation
-
-    b_C= p_y.argmax() #no recuerdo ...
-    if mode=="entropy":      
-        p_y = np.clip(p_y, 1e-7, 1.)  
-        return b_C, 1-entropy(p_y + 1e-7)/np.log(len(p_y))
-    elif mode == "median":
-        return b_C, (p_y.max() - np.median(p_y))
-    elif mode == "simple":
-        return b_C, p_y.max()
+The indicator of bias score *b*, value between 0 and 1.
