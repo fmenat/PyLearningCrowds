@@ -116,3 +116,32 @@ model_B = Sequential()
 from codeE.utils import pre_init_F
 pre_init_F(model_B, X_data, Z_hat, n_init=3)
 ```
+
+# PENDIENTE
+
+
+---
+### Cluster Annotations
+```python
+codeE.utils.clusterize_annotators(y_o,M,no_label=-1,bulk=True,cluster_type='mv_close',data=[],model=None,DTYPE_OP='float32',BATCH_SIZE=64,option="hard",l=0.005)
+```
+
+To clusterize on crowdsourcing, as initial step of groups behavior *p(g)*.
+
+
+---
+### Visual comparison of confusion matrix
+```python
+codeE.utils.compare_conf_ma(pred_conf_mat, true_conf_mat=[], text=False):
+```
+
+To compare a predicted confusion matrix against the true values
+
+---
+### Visual comparison of set confusion matrices
+```python
+codeE.utils.compare_set_conf_ma(set_conf_ma, true_set_conf_ma = [], text=True, n_samp=0):
+```
+
+To compare a set of predicted confusion matrix against the set of true values
+

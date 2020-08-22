@@ -321,17 +321,36 @@ print("Spammer score (S_score) =", S_score(beta_ex))
 ```
 
 
-def S_bias(conf_ma):
+---
+### Bias score of Confusion Matrix
+```python
+codeE.evaluation.S_bias(conf_ma, mode="median")
+```
+
+An indicator associated to the **bias** on the behavior. It is based on the marginal (a-priori) probability over annotations
+<img src="https://render.githubusercontent.com/render/math?math=... ">
+
+*  With <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}^{(g)}_{z,y}"> some confusion matrix to analize, the rows correspond to the ground truth labels *z* and the columns the observed labels *y*.
+
+Over a row: positive values are for more expert, negative for more malicious. A value *=0* correspond to *random spammer* behavior, *=1* to *expert* and *=-1* to *malicious spammer*.
+
+**Parameters**  
+* **conf_ma: *array-like of shape (n_classes, n_classes)***  
+A confusion matrix of probabilistic behavior, <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}^{(g)}_{z,y}">
+
+**Returns**  
+* **res: *float***  
+The indicator of spammer score, value between -1 and 1.
+
+S_bias(conf_ma, mode="entropy"):
     """Score to known if p(y|something) == p(y) """
     p_y = conf_ma.mean(axis=0) #prior anotation
-    if mode=="entropy":        
-        return entropy(p_y)
-    elif mode == "median":
-        return (p_y.max() - np.median(p_y)), p_y.argmax()
-    elif mode == "simple":
-        return p_y.max(), p_y.argmax() 
-    #elif mode == "mean": #not so good
-    #    return p_y.max() - p_y.mean()
-    #elif mode =="real":
-    #return np.mean([conf_ma[l,:] - np.mean(np.delete(conf_ma[l,:],l))  for l in range(len(conf_ma))] )
 
+    b_C= p_y.argmax() #no recuerdo ...
+    if mode=="entropy":      
+        p_y = np.clip(p_y, 1e-7, 1.)  
+        return b_C, 1-entropy(p_y + 1e-7)/np.log(len(p_y))
+    elif mode == "median":
+        return b_C, (p_y.max() - np.median(p_y))
+    elif mode == "simple":
+        return b_C, p_y.max()

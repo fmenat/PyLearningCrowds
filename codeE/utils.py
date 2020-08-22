@@ -1,5 +1,4 @@
 from sklearn.metrics import confusion_matrix,f1_score
-from sklearn.preprocessing import normalize
 import itertools, keras, math,gc, time,sys, os
 import numpy as np
 import pandas as pd
@@ -65,7 +64,7 @@ def plot_confusion_matrix(conf, classes=[],title="Estimated",text=True):
 def plot_confusion_keras(model,x,y,classes):
     y_pred_ohe = model.predict_classes(x)
     conf_matrix = confusion_matrix(y_true=y, y_pred=y_pred_ohe)
-    conf_matrix = normalize(conf_matrix, axis=1, norm='l1')
+    conf_matrix = conf_matrix/conf_matrix.sum(axis=-1, keepdims=True)
     plot_confusion_matrix(conf_matrix,classes)
 
 def softmax(Xs):
@@ -132,7 +131,7 @@ def calculate_D_NormF(confs_true, confs_pred):
     else:
         print("ERROR! There are %d real and %d predicted conf matrices"%(M_t,M_p))
 
-def compare_conf_mats(pred_conf_mat,true_conf_mat=[], text=False):
+def compare_conf_ma(pred_conf_mat, true_conf_mat=[], text=False):
     classes = np.arange(pred_conf_mat[0].shape[0])
     sp = plt.subplot(1,2,2)
     plt.imshow(pred_conf_mat, interpolation='nearest', cmap=cm.YlOrRd, vmin=0, vmax=1)
@@ -147,6 +146,8 @@ def compare_conf_mats(pred_conf_mat,true_conf_mat=[], text=False):
             plt.text(j, i, format(pred_conf_mat[i, j], '.2f'),
                      horizontalalignment="center",
                      color="white" if pred_conf_mat[i, j] > thresh else "black")
+    else:
+        plt.colorbar()
     plt.tight_layout()
 
     if len(true_conf_mat) != 0:
@@ -161,10 +162,29 @@ def compare_conf_mats(pred_conf_mat,true_conf_mat=[], text=False):
                 plt.text(j, i, format(true_conf_mat[i, j], '.2f'),
                          horizontalalignment="center",
                          color="white" if true_conf_mat[i, j] > thresh else "black")
-        #plt.ylabel('True label')
-        #plt.xlabel('Observed label')
     plt.tight_layout()
     plt.show()
+
+def compare_set_conf_ma(set_conf_ma, true_set_conf_ma = [], text=True, n_samp=0):
+    if n_samp==0:
+        n_samp = len(set_conf_ma)
+        
+    if len(true_set_conf_ma) == 0:
+        true_set_conf_ma = [ [] for _ in range(len(set_conf_ma))]
+    print("Plot %d random matrices from the set"%n_samp)
+    idx_samp = np.random.choice( np.arange(len(set_conf_ma)), size=n_samp, replace=False)
+    for idx in idx_samp:
+        compare_conf_ma(set_conf_ma[idx], true_set_conf_ma[idx], text=text)
+        if text and len(true_set_conf_ma[idx]) != 0:
+            print("D (based on Jensen Shannon) =",D_JS(true_set_conf_ma[idx], set_conf_ma[idx]))
+            print("D (based on normalized Frobenius) =",D_NormF(true_set_conf_ma[idx], set_conf_ma[idx]))
+
+
+def read_texts(filename):
+    f = open(filename)
+    data = [line.strip() for line in f]
+    f.close()
+    return data
 
 class EarlyStopRelative(keras.callbacks.Callback):
     def __init__(self,
