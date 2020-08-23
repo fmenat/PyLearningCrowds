@@ -4,6 +4,7 @@ Learning from crowds methods implemented in Python. The available methods:
 * **Dawid and Skene**: ground truth (GT) inference based on confusion matrices (CM) of annotators.
 * **Raykar et al**: predictive model over GT inference based on CM of annotators
 * **Mixture Models**: inference of model and groups on annotations of the data or the annotators
+* **Global Behavior**: based on label noise solutions, a global confusion matrix to infer a predictive model.
 
 For examples of how to use the methods see the notebooks **Tutorials** on:
 * [LabelMe](./Tutorial%20-%20LabelMe.ipynb): a real image dataset
@@ -74,10 +75,11 @@ For the other available methods see the [methods documentation](./docs/methods.m
 
 
 #### Extensions
-* Fast estimation, based on hard or discrete, on other methods besides DS
 * Methods with predictive model include support for sklearn
+* Rodrigues et al. 2018
+* Guan et al. 2018
+* Label noise without predictive model
+* CMM and C-MoA without predictive model
+* Fast estimation, based on hard or discrete, on other methods besides DS
 * Other initialization on EM
 * Rodrigues et al. 2013
-* Guan et al. 2018
-* Rodrigues et al. 2018
-* Whitewill et al. ((GLAD))

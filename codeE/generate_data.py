@@ -22,7 +22,7 @@ def do_gaussianXOR(n=250,std=0.3,noise=False):
     return X_data[indexs],Z_data[indexs]
 
 
-class SinteticData(object):
+class SyntheticData(object):
     def __init__(self,state=None):
         self.probas = False #not yet
         self.Random_num = np.random.RandomState(None)
@@ -57,7 +57,7 @@ class SinteticData(object):
             self.Kl = self.conf_matrix.shape[1]
         self.probas = True
   
-    def sintetic_annotate_data(self,Y,Tmax,T_data,deterministic=False, hard=True):
+    def synthetic_annotate_data(self,Y,Tmax,T_data,deterministic=False, hard=True):
         """ARGS:
             * N: number of data
             * Tmax: number of annotators in all the data
@@ -69,7 +69,7 @@ class SinteticData(object):
 
         N = Y.shape[0]
         #sample group for every annotator:
-        sintetic_annotators_group = []
+        synthetic_annotators_group = []
         for t in range(Tmax):
             if hard:
                 S_t = 1
@@ -82,10 +82,10 @@ class SinteticData(object):
                 grupo = [np.argmax(grupo)]
             else:
                 grupo = grupo/np.sum(grupo) #soft
-            sintetic_annotators_group.append(grupo)
-        sintetic_annotators_group = np.asarray(sintetic_annotators_group)
+            synthetic_annotators_group.append(grupo)
+        synthetic_annotators_group = np.asarray(synthetic_annotators_group)
         
-        sintetic_annotators = -1*np.ones((N,Tmax),dtype='int32')
+        synthetic_annotators = -1*np.ones((N,Tmax),dtype='int32')
         
         yo_count = np.zeros((N,self.Kl))
         prob = T_data/float(Tmax) #probability that she annotates
@@ -100,46 +100,46 @@ class SinteticData(object):
                 Ti = self.Random_num.choice(np.arange(Tmax), size=T_data, replace=False) #multinomial of index
                 for t in Ti: #index of annotators
                     #get group of annotators
-                    g = sintetic_annotators_group[t] #in discrete value, g {0,1,...,M}
+                    g = synthetic_annotators_group[t] #in discrete value, g {0,1,...,M}
                     if hard:
                         sample_prob = self.conf_matrix[g[0],z,:]
                     else: #soft
                         sample_prob = np.tensordot(g[:], self.conf_matrix[:,z,:], axes=[[0],[0]]) #mixture
                     #sample trough confusion matrix 
                     yo = np.argmax( self.Random_num.multinomial(1, sample_prob) )
-                    sintetic_annotators[i,t] = yo
+                    synthetic_annotators[i,t] = yo
                     yo_count[i,yo] +=1
             else:
                 for t in range(Tmax):
                     if self.Random_num.rand() <= prob: #if she label the data i
                         #get group of annotators
-                        g = sintetic_annotators_group[t] #in discrete value, g {0,1,...,M}
+                        g = synthetic_annotators_group[t] #in discrete value, g {0,1,...,M}
                         if hard:
                             sample_prob = self.conf_matrix[g[0],z,:]
                         else: #soft
                             sample_prob = np.tensordot(g[:], self.conf_matrix[:,z,:], axes=[[0],[0]]) #mixture
                         #sample trough confusion matrix 
                         yo = np.argmax( self.Random_num.multinomial(1, sample_prob) )
-                        sintetic_annotators[i,t] = yo
+                        synthetic_annotators[i,t] = yo
                         yo_count[i,yo] +=1
                         
-            if np.sum( sintetic_annotators[i,:] != -1)  == 0: #avoid data not labeled
+            if np.sum( synthetic_annotators[i,:] != -1)  == 0: #avoid data not labeled
                 t_rand = self.Random_num.randint(0,Tmax)
-                g = sintetic_annotators_group[t_rand] #in discrete value, g {0,1,...,M}
+                g = synthetic_annotators_group[t_rand] #in discrete value, g {0,1,...,M}
                 if hard:
                     sample_prob = self.conf_matrix[g[0],z,:]
                 else: #soft
                     sample_prob = np.tensordot(g[:], self.conf_matrix[:,z,:], axes=[[0],[0]]) #mixture
 
-                sintetic_annotators[i,t_rand] = np.argmax( self.Random_num.multinomial(1, sample_prob) )
-                yo_count[i,sintetic_annotators[i,t_rand]] +=1
+                synthetic_annotators[i,t_rand] = np.argmax( self.Random_num.multinomial(1, sample_prob) )
+                yo_count[i,synthetic_annotators[i,t_rand]] +=1
         self.yo_label = yo_count.argmax(axis=1) #get yo_hard
         #clean the annotators that do not label
-        mask_label = np.where(np.sum(sintetic_annotators,axis=0) != sintetic_annotators.shape[0]*-1)[0]
-        sintetic_annotators = sintetic_annotators[:,mask_label]
+        mask_label = np.where(np.sum(synthetic_annotators,axis=0) != synthetic_annotators.shape[0]*-1)[0]
+        synthetic_annotators = synthetic_annotators[:,mask_label]
         
         print("Done! ")
-        return sintetic_annotators,sintetic_annotators_group[mask_label,:]
+        return synthetic_annotators,synthetic_annotators_group[mask_label,:]
 
     def save_annotations(self, annotations, file_name='annotations',npy=True):
         if npy:

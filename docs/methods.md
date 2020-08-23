@@ -12,6 +12,8 @@ The available methods:
 * [Raykar et al](#model-inference-based-on-em---confusion-matrix): predictive model over GT inference based on CM of annotators  
 * [Crowd Mixture Model](#model-and-annotations-group-inference-based-on-em---confusion-matrix) inference of model and groups on annotations of the data  
 * [Crowd - Mixture of Annotators](#model-and-annotators-group-inference-based-on-em---confusion-matrix) inference of model and groups on annotations of the annotators  
+* [Global - Label Noise](#model-inference-based-on-em---label-noise) inference of model and global behavior of annotations, as a label noise problem (only one confusion matrix)
+
 
 ---
 ### Simple aggregation techniques
@@ -195,6 +197,7 @@ ds_labels
 |*fit*| same as *train*|
 |*infer*| Get the inferred ground truth on training set |
 |*predict*| same as *infer*|
+|*get_ann_confusionM*| Returns the individual confusion matrices estimation|
 
 
 ```python
@@ -209,7 +212,7 @@ get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_annotators, n_classes, n_classes)***  
-The confusion matrix of each annotator <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)}">
+The confusion matrix of each annotator <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(t)}">
 
 ```python
 get_qestimation()
@@ -296,6 +299,13 @@ predict(*args)
 ```
 same operation than infer function.
 
+```python
+get_ann_confusionM()
+```
+**Returns**  
+* **prob_Y_Zt: *array-like of shape (n_annotators, n_classes, n_classes)***  
+The individual confusion matrix of each annotator: <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(t)}">
+
 
 ---
 ### Model Inference based on EM - Confusion Matrix
@@ -341,7 +351,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 
 ##### Examples
 ```python
-Xstd_train = ...
+X_train = ...
 ... #read some data 
 from codeE.representation import set_representation
 y_obs_categorical = set_representation(y_obs,'onehot') 
@@ -357,7 +367,7 @@ from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar(init_Z="softmv")
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 R_model.set_model(F_model, **args)
-R_model.fit(Xstd_train, y_obs_categorical)
+R_model.fit(X_train, y_obs_categorical)
 ```
 > Train with different settings 
 ```python
@@ -365,7 +375,7 @@ from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar(init_Z="softmv", priors='laplace')
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 R_model.set_model(F_model, **args)
-R_model.fit(Xstd_train, y_obs_categorical, runs=20)
+R_model.fit(X_train, y_obs_categorical, runs=20)
 ```
 > Get the base model to predict the ground truth on some data
 ```python
@@ -388,6 +398,7 @@ raykar_fx.predict(new_X)
 |*train*| Perform all the inference based on EM algorithm|
 |*multiples_run*| Perform multiple runs of the EM algorithm and save the best|
 |*fit*| same as *multiples_run* |
+|*get_ann_confusionM*| Returns the individual confusion matrices estimation|
 |*get_predictions*| Returns the probability predictions of ground truth over some set|
 |*get_predictions_annot*| Returns the probability estimation of labels over some set for each annotator|
 
@@ -404,7 +415,7 @@ get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_annotators, n_classes, n_classes)***  
-The confusion matrix of each annotator <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)}">
+The confusion matrix of each annotator <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(t)}">
 
 ```python
 get_qestimation()
@@ -522,9 +533,15 @@ fit(X,Y, runs = 1, max_iter=50, tolerance=3e-2)
 same operation than *multiples_run* function.
 
 ```python
+get_ann_confusionM()
+```
+**Returns**  
+* **prob_Y_Zt: *array-like of shape (n_annotators, n_classes, n_classes)***  
+The individual confusion matrix of each annotator: <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(t)}">
+
+```python
 get_predictions(X)
 ```
-
 **Parameters** 
 * **X: *array-like of shape (n_samples, ...)***  
 Input patterns of some data. 
@@ -533,10 +550,10 @@ Input patterns of some data.
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
 The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
 
+
 ```python
 get_predictions_annot(X, data=[])
 ```
-
 **Parameters** 
 * **X: *array-like of shape (n_samples, ...)***  
 Input patterns of some data. 
@@ -544,8 +561,9 @@ Input patterns of some data.
 If the probability predictions of the ground truth over some set are delivered
 
 **Returns**  
-* **prob_Y_xt: *array-like of shape (n_samples, n_annotators, n_classes)***  
+* **prob_Y_xt: *array-like of shape (n_samples, n_annotators\, n_classes)***  
 The probability estimation of labels over some set for each annotator <img src="https://render.githubusercontent.com/render/math?math=p(y|x, t) = \sum_{z} p(y|z,t) p(z|x) ">.
+
 
 ---
 ### Model and Annotations Group Inference based on EM - Confusion Matrix
@@ -589,7 +607,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 
 ##### Examples
 ```python
-Xstd_train = ...
+X_train = ...
 ... #read some data 
 from codeE.representation import set_representation
 r_obs = set_representation(y_obs, "global")
@@ -605,7 +623,7 @@ from codeE.methods import ModelInf_EM_CMM as CMM
 CMM_model = CMM(M=3)
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMM_model.set_model(F_model, **args)
-CMM_model.fit(Xstd_train, r_obs)
+CMM_model.fit(X_train, r_obs)
 ```
 > Train with different settings 
 ```python
@@ -613,7 +631,7 @@ from codeE.methods import ModelInf_EM_CMM as CMM
 CMM_model = CMM(M=3, init_Z='softmv', n_init_Z=3, priors=0) 
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMM_model.set_model(F_model, **args)
-CMM_model.fit(Xstd_train, r_obs, runs=20)
+CMM_model.fit(X_train, r_obs, runs=20)
 ```
 > Get the base model to predict the ground truth on some data
 ```python
@@ -645,9 +663,9 @@ for i in range(len(B)):
 |*train*| Perform all the inference based on EM algorithm|
 |*multiples_run*| Perform multiple runs of the EM algorithm and save the best|
 |*fit*| same as *multiples_run* |
-|*get_predictions*| Returns the probability predictions of ground truth over some set|
 |*get_global_confusionM*| Returns the global confusion matrix|
 |*get_ann_confusionM*| Returns the individual confusion matrix estimation of some annotator based on his annotations on the data|
+|*get_predictions*| Returns the probability predictions of ground truth over some set|
 |*get_predictions_groups*| Returns the probability estimation of labels over the modeled groups|
 
 ```python
@@ -662,7 +680,7 @@ get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_groups, n_classes, n_classes)***  
-The confusion matrix of each modeled group <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)}">
+The confusion matrix of each modeled group <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(m)}">
 
 ```python
 get_alpha()
@@ -800,7 +818,7 @@ get_global_confusionM()
 ```
 **Returns**  
 * **prob_Y_Z: *array-like of shape (n_classes, n_classes)***  
-The global confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j} = \sum_{m} \beta_{k,j}^{(m)} \cdot p(g=m)">
+The global confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j} = \sum_{m} \hat{\beta}_{k,j}^{(m)} \cdot p(g=m)">
 
 ```python
 get_ann_confusionM(X, Y)
@@ -813,7 +831,7 @@ Annotations of some specific annotator *t*, no label symbol *=-1*
 
 **Returns**  
 * **ann_prob_Y_Z: *array-like of shape (n_classes, n_classes)***  
-The individual confusion matrix of some annotator *t*: <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = \sum_{m} \beta_{k,j}^{(m)}\cdot  p(g=m|t)">
+The individual confusion matrix of some annotator *t*: <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(t)} = \sum_{m} \hat{\beta}_{k,j}^{(m)}\cdot  p(g=m|t)">
 
 ```python
 get_predictions_groups(X, data=[])
@@ -875,7 +893,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 
 ##### Examples
 ```python
-Xstd_train = ...
+X_train = ...
 ... #read some data 
 from codeE.representation import set_representation
 y_cat_var, A_idx_var = set_representation(y_obs,"onehotvar")
@@ -900,7 +918,7 @@ from codeE.methods import ModelInf_EM_CMOA as CMOA
 CMOA_model = CMOA(M=3) 
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMOA_model.set_model(F_model, ann_model=group_model, **args)
-CMOA_model.fit(Xstd_train, y_cat_var, A_idx_var)
+CMOA_model.fit(X_train, y_cat_var, A_idx_var)
 ```
 > Train with different settings (**you must create the keras model again**)
 ```python
@@ -908,7 +926,7 @@ from codeE.methods import ModelInf_EM_CMOA as CMOA
 CMOA_model = CMOA(M=3, init_Z='softmv', n_init_Z=0, n_init_G=0, priors=1) 
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMOA_model.set_model(F_model, ann_model=group_model, **args)
-CMOA_model.fit(Xstd_train, y_cat_var, A_idx_var, runs=20)
+CMOA_model.fit(X_train, y_cat_var, A_idx_var, runs=20)
 ```
 > Get the base model to predict the ground truth on some data
 ```python
@@ -938,10 +956,10 @@ prob_Yzt = CMOA_model.get_ann_confusionM(A)
 |*train*| Perform all the inference based on EM algorithm|
 |*multiples_run*| Perform multiple runs of the EM algorithm and save the best|
 |*fit*| same as *multiples_run* |
-|*get_predictions_z*| Returns the probability predictions of ground truth over some set|
-|*get_predictions_g*| Returns the probability predictions of the groups over the annotators|
 |*get_global_confusionM*| Returns the global confusion matrix|
 |*get_ann_confusionM*| Returns the individual confusion matrix estimation of annotators|
+|*get_predictions_z*| Returns the probability predictions of ground truth over some set|
+|*get_predictions_g*| Returns the probability predictions of the groups over the annotators|
 |*get_predictions_groups*| Returns the probability estimation of labels over the modeled groups|
 
 ```python
@@ -963,7 +981,7 @@ get_confusionM()
 ```
 **Returns**  
 * **betas: *array-like of shape (n_groups, n_classes, n_classes)***  
-The confusion matrix of each modeled group <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(m)}">
+The confusion matrix of each modeled group <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(m)}">
 
 ```python
 get_qestimation()
@@ -1139,7 +1157,7 @@ Probabilities of the annotators over the groups.
 
 **Returns**  
 * **prob_Y_Z: *array-like of shape (n_classes, n_classes)***  
-The global confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j} =\sum_m \beta_{k,j}^{(m)} \cdot p(g=m)">
+The global confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j} =\sum_m \hat{\beta}_{k,j}^{(m)} \cdot p(g=m)">
 
 ```python
 get_ann_confusionM(A)
@@ -1150,7 +1168,7 @@ The identifier of *n_annotators_pred* annotators.
 
 **Returns**  
 * **prob_Y_Zt: *array-like of shape (n_annotators_pred, n_classes, n_classes)***  
-The individual confusion matrices of *n_annotators_pred* annotators: <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}^{(t)} = \sum_m \beta_{k,j}^{(m)}\cdot p(g=m|t)">
+The individual confusion matrices of *n_annotators_pred* annotators: <img src="https://render.githubusercontent.com/render/math?math=\{\beta}_{k,j}^{(t)} = \sum_m \hat{\beta}_{k,j}^{(m)}\cdot p(g=m|t)">
 
 ```python
 get_predictions_groups(X, data=[])
@@ -1165,3 +1183,76 @@ If the probability predictions of the ground truth over some set are delivered
 **Returns**  
 * **prob_Y_xg: *array-like of shape (n_samples, n_groups, n_classes)***  
 The probability estimation of labels over some set for each group <img src="https://render.githubusercontent.com/render/math?math=p(y|x, g) = \sum_z p(y|z,g ) p(z|x)">.
+
+
+---
+### Model Inference based on EM - Label Noise
+```python
+class codeE.methods.ModelInf_EM_G(init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32')
+```
+[UP](#crowdsourcing-methods)
+
+global label noise
+
+global learning from corews
+
+learning from global annotations
+
+**Parameters**  
+* **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
+The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|x_i)">. Both posibilities are based on LabelAgg class. 
+* **n_init_Z: *int, default=0***  
+The number of epochs that the predictive model is going to be pre-trained.
+* **priors: *different options***  
+The priors to be set on the confusion matrices of annotators, could be in different formats:
+	* *string, {'laplace','none'}*  
+	The 'laplace' stand for Laplace smoothing, a prior with the value of 1.
+	* *int*  
+	A number of annotations to be set prior for all the groups over all the data.
+	* *array-like of shape (n_groups,)*  
+	A vector of the number of annotations to be set prior for every possible group on the data.
+	* *array-like of shape (n_groups, n_classes)*  
+	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
+	* *array-like of shape (n_groups, n_classes, n_classes)*  
+	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
+* **DTYPE_OP: *string, default='float32'***  
+dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
+
+
+##### References
+[1] nada
+
+##### Examples
+```python
+X_train = ...
+... #read some data 
+from codeE.representation import set_representation
+r_obs = set_representation(y_obs, "global")
+```
+> Define predictive model (based on keras)
+```python
+F_model = Sequential()
+... #add layers
+```
+> Set the model and train the method
+```python
+from codeE.methods import ModelInf_EM_G as G_Noise
+GNoise_model = G_Noise() 
+args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
+GNoise_model.set_model(F_model, **args)
+GNoise_model.fit(X_train, r_obs)
+```
+> Train with different settings 
+```python
+from codeE.methods import ModelInf_EM_G as G_Noise
+GNoise_model = G_Noise(init_Z='softmv', n_init_Z=3, priors=0) 
+args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
+GNoise_model.set_model(F_model, **args)
+GNoise_model.fit(X_train, r_obs, runs=20)
+```
+> Get the base model to predict the ground truth on some data
+```python
+G_fx = GNoise_model.get_basemodel()
+G_fx.predict(new_X)
+```

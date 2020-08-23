@@ -121,27 +121,44 @@ pre_init_F(model_B, X_data, Z_hat, n_init=3)
 
 
 ---
+### Visual comparison of confusion matrix
+```python
+codeE.utils.compare_conf_ma(pred_conf_mat, true_conf_mat=[], text=False)
+```
+To compare a predicted confusion matrix against the true values, it must sum one per row.
+
+**Parameters**  
+* **pred_conf_mat: *array-like of shape (n_classes, n_classes)***  
+An estimation (predicted) confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}">
+* **true_conf_mat: *array-like of shape (n_classes, n_classes), default=[]***  
+The true confusion matrix <img src="https://render.githubusercontent.com/render/math?math=\beta_{k,j}">
+If empty list is given, it does not show this matrix.
+* **text: *boolean, default=False***  
+If True it will print the probabilities inside the confusion matrix plot.
+
+---
+### Visual comparison of set confusion matrices
+```python
+codeE.utils.compare_set_conf_ma(set_conf_ma, true_set_conf_ma = [], text=True, n_samp=0)
+```
+To compare a set of predicted confusion matrix against the set of true values, the confusion matrix must sum one per row.
+**Parameters**  
+* **set_conf_ma: *array-like of shape (n_matrices, n_classes, n_classes)***  
+A set of confusion matrices estimation  <img src="https://render.githubusercontent.com/render/math?math=\hat{B}=\{\hat{\beta}_{k,j}^{(m)}\}_{m=1}^M">
+* **true_set_conf_ma: *array-like of shape (n_matrices, n_classes, n_classes), default=[]***  
+The set of the true confusion matrices <img src="https://render.githubusercontent.com/render/math?math={B}=\{{\beta}_{k,j}^{(m)}\}_{m=1}^M">
+If empty list is given, it does not show this matrix.
+* **text: *boolean, default=False***  
+If True it will print the probabilities inside the confusion matrix plot, besides an indicator of the estimation error on the printed matrices.
+* **n_samp: *int, default=0***  
+The number of matrices to randomly plot from the set. If *n_samp=0*, it will print all the matrices from the set.
+
+
+---
 ### Cluster Annotations
 ```python
 codeE.utils.clusterize_annotators(y_o,M,no_label=-1,bulk=True,cluster_type='mv_close',data=[],model=None,DTYPE_OP='float32',BATCH_SIZE=64,option="hard",l=0.005)
 ```
 
 To clusterize on crowdsourcing, as initial step of groups behavior *p(g)*.
-
-
----
-### Visual comparison of confusion matrix
-```python
-codeE.utils.compare_conf_ma(pred_conf_mat, true_conf_mat=[], text=False):
-```
-
-To compare a predicted confusion matrix against the true values
-
----
-### Visual comparison of set confusion matrices
-```python
-codeE.utils.compare_set_conf_ma(set_conf_ma, true_set_conf_ma = [], text=True, n_samp=0):
-```
-
-To compare a set of predicted confusion matrix against the set of true values
 
