@@ -293,13 +293,13 @@ def estimate_batch_size(model, scale_by=5.0,precision = 2):
     max_size = max(32,np.int(available_mem / (precision * num_params * scale_by)))
     return np.int(2 ** math.floor(np.log(max_size)/np.log(2)))
 
-def pre_init_F(model, X_inp, Z_targ, n_init, batch_size=32):
-    print("Pre-train network on %d epochs..."%(n_init),end='',flush=True)
+def pre_init_F(model, X_inp, Z_targ, n_init, batch_size=32, reset_optimizer=True):
+    print("Pre-train network %s on %d epochs..."%(model.name, n_init),end='',flush=True)
     model.fit(X_inp, Z_targ, batch_size=batch_size, epochs = n_init, verbose=0)
-    #reset optimizer but hold weights--necessary for stability 
-    loss_p = model.loss
-    opt = type(model.optimizer).__name__
-    model.compile(loss=loss_p, optimizer=opt)
+    if reset_optimizer:    #reset optimizer but hold weights--necessary for stability 
+        loss_p = model.loss
+        opt = type(model.optimizer).__name__
+        model.compile(loss=loss_p, optimizer=opt)
     print(" Done!")
 
 

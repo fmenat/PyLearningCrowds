@@ -26,6 +26,7 @@
 * Consider the number of times that all the annotators gives each possible labels: <img src="https://render.githubusercontent.com/render/math?math=r_{ij} \in \{0,1,\ldots,T_i\}">
 * Given a sample <img src="https://render.githubusercontent.com/render/math?math=\{ (x_i,r_i) \}_{i=1}^N">.
 
+<img src="https://minutes.co/wp-content/uploads/2019/08/crowdsourcing.jpg" width="50%" />
 
 
 

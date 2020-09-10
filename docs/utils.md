@@ -117,9 +117,6 @@ from codeE.utils import pre_init_F
 pre_init_F(model_B, X_data, Z_hat, n_init=3)
 ```
 
-# PENDIENTE
-
-
 ---
 ### Visual comparison of confusion matrix
 ```python
