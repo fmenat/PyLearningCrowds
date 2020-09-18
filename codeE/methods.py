@@ -1298,10 +1298,11 @@ class ModelInf_EM_R(object):
         A2 = np.log(1-b_aux + self.Keps) + np.log(1./self.K)
         A2  = np.exp(A2)
 
-        self.sum_unnormalized_q = (A1 + A2)[~self.mask_not_ann].sum(axis=-1)
-        
-        self.Ri_l = A1/(A1+A2) 
+        self.sum_unnormalized_q = (A1 + A2)
+                
+        self.Ri_l = A1/self.sum_unnormalized_q
         self.Ri_l[self.mask_not_ann] = 0 #non label
+        self.sum_unnormalized_q[self.mask_not_ann] = 0 #non label
         self.Ri_l = self.Ri_l.astype(self.DTYPE_OP)
 
     def M_step(self,X, y_ann): 
@@ -1314,7 +1315,7 @@ class ModelInf_EM_R(object):
         #self.b = self.Ri_l.mean(axis=0) 
         
     def compute_logL(self):
-        return np.sum( np.log(self.sum_unnormalized_q +self.Keps))
+        return np.sum( np.log(self.sum_unnormalized_q.sum(axis=-1) +self.Keps))
         
     def train(self,X_train,y_ann,max_iter=50,tolerance=3e-2):   
         if not self.compile:

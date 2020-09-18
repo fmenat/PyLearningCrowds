@@ -1,10 +1,9 @@
 import numpy as np
 import pickle
 
-def do_gaussianXOR(n=250,std=0.3,noise=False):
+def do_gaussianEX(n=250,std=0.3):
     rng = np.random.RandomState(0)
     u = 1
-    #unbalanced
     n1 = np.random.poisson(n)
     n2 = np.random.poisson(n)
     n3 = np.random.poisson(n)
@@ -33,14 +32,9 @@ class SyntheticData(object):
         elif type(state) == tuple or type(state) == int:
             self.Random_num.set_state(state)
             
-        #init state:
         self.init_state = self.Random_num.get_state() #to replicate
 
-    def set_probas(self,file_matrix, file_groups, asfile = False):
-        """
-            * conf_matrix: All confusion matrices of the differentes groups
-            * prob_groups: probabilities of the groups in the data
-        """
+    def set_probas(self, file_matrix, file_groups, asfile = False):
         if asfile:
             load_matrix = np.loadtxt(file_matrix,delimiter=',')
             rows,self.Kl = load_matrix.shape
@@ -51,23 +45,17 @@ class SyntheticData(object):
 
             self.prob_groups = np.loadtxt(file_groups,delimiter=',')
         else:
-            #se entrega el archivo directamente
             self.conf_matrix = np.asarray(file_matrix) 
             self.prob_groups = np.asarray(file_groups)
             self.Kl = self.conf_matrix.shape[1]
         self.probas = True
   
-    def synthetic_annotate_data(self,Y,Tmax,T_data,deterministic=False, hard=True):
-        """ARGS:
-            * N: number of data
-            * Tmax: number of annotators in all the data
-            * T_data: Expected value of number of annotators by every data      
-        """
+    def synthetic_annotate_data(self, Z, Tmax, T_data, deterministic=False, hard=True):
         print("New Synthetic data is being generated...",flush=True,end='')
         if not self.probas:
             self.set_probas()
 
-        N = Y.shape[0]
+        N = Z.shape[0]
         #sample group for every annotator:
         synthetic_annotators_group = []
         for t in range(Tmax):
@@ -91,10 +79,10 @@ class SyntheticData(object):
         prob = T_data/float(Tmax) #probability that she annotates
         for i in range(N):
             #get ground truth of data 
-            if Y[i].shape != ():
-                z = int(np.argmax(Y[i]))
+            if Z[i].shape != ():
+                z = int(np.argmax(Z[i]))
             else:
-                z = int(Y[i])
+                z = int(Z[i])
 
             if deterministic:
                 Ti = self.Random_num.choice(np.arange(Tmax), size=T_data, replace=False) #multinomial of index

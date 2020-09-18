@@ -21,11 +21,13 @@ For examples of how to use the methods see the notebooks **Tutorials** on:
 ---
 ### Documentation
 * [Comparison](./docs/comparison.md)
-* [Evaluation](./docs/evaluation.md)
-* [Methods](./docs/methods.md)
 * [Notation](./docs/notation.md)
-* [Representation](./docs/representation.md)
-* [Utils](./docs/utils.md)
+* CODE:
+	* [Evaluation](./docs/evaluation.md)
+	* [Generate](./docs/generate_data.md)
+	* [Methods](./docs/methods.md)
+	* [Representation](./docs/representation.md)
+	* [Utils](./docs/utils.md)
 
 
 ---
