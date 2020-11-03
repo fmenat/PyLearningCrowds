@@ -83,13 +83,25 @@ cmm_fx.predict(new_X)
 ```
 
 For the other available methods see the [methods documentation](./docs/methods.md)
+---
 
+#### News
+* Base predictive model support Logistic Regression on sklearn 
+> Only with **one run** in the configuration of the methods
+>> Example 
+```python
+from sklearn.linear_model import LogisticRegression as LR 
+model_sklearn_A = LR(C= 1, multi_class="multinomial")
+from codeE.methods import ModelInf_EM as Raykar
+R_model = Raykar(init_Z="softmv")
+args = {'epochs':1, 'optimizer': "newton-cg", 'lib_model': "sklearn"}
+R_model.set_model(model_sklearn_A, **args)
+R_model.fit(Xstd_train, y_obs_categorical, runs=1)
+```
 
 #### Extensions
-* Methods with predictive model include support for sklearn
 * Rodrigues et al. 2018
 * Label noise without EM
 * Guan et al. 2018 (models with label aggregation)
 * Kajino et al. 2012 (models with model aggregation)
-* CMM and C-MoA without predictive model
 * Fast estimation, based on hard or discrete, on other methods besides DS

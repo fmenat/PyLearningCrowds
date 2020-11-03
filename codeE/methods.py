@@ -53,25 +53,18 @@ class LabelAgg(object): #no predictive model
     def predict(self, *args):
         return self.infer(*args)
 
+######################################## BASED ON INFERENCE  ########################################
 
-class LabelInf_EM(object): #DS
-    def __init__(self,init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32'):
+class Super_LabelInf(object):
+    def __init__(self, init_Z='softmv', priors=0, DTYPE_OP='float32'):
         self.DTYPE_OP = DTYPE_OP
         self.init_Z = init_Z.lower()
         self.set_priors(priors)
-        self.fast = fast #fast DS method.. 
-        
+
         self.Keps = keras.backend.epsilon()
         self.init_done = False
-        
-    def get_marginalZ(self):
-        return self.z_marginal.copy()
-    def get_confusionM(self):
-        return self.betas.copy()
-    def get_qestimation(self):
-        return self.Qi_k.copy()
 
-    def set_priors(self, priors):
+    def set_priors(self, priors, globalM=False):
         if type(priors) == str:
             if priors.lower() == "laplace":
                 priors = 1
@@ -81,13 +74,32 @@ class LabelInf_EM(object): #DS
                 raise Exception('Prior not valid')
                 
         priors = np.asarray(priors)
-        if len(priors.shape)==0:
-            priors = np.expand_dims(priors, axis=(0,1,2))
-        elif len(priors.shape)==1:
-            priors=np.expand_dims(priors,axis=(1,2))
-        elif len(priors.shape)==2:
-            priors=np.expand_dims(priors,axis=2)
-        self.Mpriors = priors
+        if globalM:
+            if len(priors.shape)==0:
+                priors = np.expand_dims(priors, axis=(0,1))
+            elif len(priors.shape)==1:
+                priors=np.expand_dims(priors,axis=(1))
+        else:
+            if len(priors.shape)==0:
+                priors = np.expand_dims(priors, axis=(0,1,2))
+            elif len(priors.shape)==1:
+                priors=np.expand_dims(priors,axis=(1,2))
+            elif len(priors.shape)==2:
+                priors=np.expand_dims(priors,axis=2)
+        self.Mpriors = priors 
+
+
+class LabelInf_EM(Super_LabelInf): #DS
+    def __init__(self,init_Z='softmv', priors=0, fast=False, DTYPE_OP='float32'):
+        super().__init__(init_Z, priors,DTYPE_OP)
+        self.fast = fast #fast DS method.. 
+        
+    def get_marginalZ(self):
+        return self.z_marginal.copy()
+    def get_confusionM(self):
+        return self.betas.copy()
+    def get_qestimation(self):
+        return self.Qi_k.copy()
         
     def init_E(self, y_ann, method=""): #Majority voting start
         print("Initializing new EM...")
@@ -183,37 +195,17 @@ class LabelInf_EM(object): #DS
         return self.get_confusionM()
 
 
-class LabelInf_EM_G(object): 
+class LabelInf_EM_G(Super_LabelInf): 
     def __init__(self, init_Z="softmv", priors=0, DTYPE_OP='float32'):
-        self.DTYPE_OP = DTYPE_OP
-        self.init_Z = init_Z.lower()
-        self.set_priors(priors)
+        super().__init__(init_Z, priors,DTYPE_OP)
+        super().set_priors(priors, globalM=True)
 
-        self.Keps = keras.backend.epsilon()
-        self.init_done = False
-        
     def get_marginalZ(self):
         return self.z_marginal.copy()
     def get_confusionM(self):
         return self.beta.copy()
     def get_qestimation(self):
         return self.Qi_k.copy()
-
-    def set_priors(self, priors):
-        if type(priors) == str:
-            if priors.lower() == "laplace":
-                priors = 1
-            elif priors.lower() == "none":
-                priors = 0
-            else:
-                raise Exception('Prior not valid')
-                
-        priors = np.asarray(priors)
-        if len(priors.shape)==0:
-            priors = np.expand_dims(priors, axis=(0,1))
-        elif len(priors.shape)==1:
-            priors=np.expand_dims(priors,axis=(1))
-        self.Bpriors = priors
 
     def init_E(self, r_ann, method=""):
         print("Initializing new EM...")
@@ -246,7 +238,7 @@ class LabelInf_EM_G(object):
 
         #-------> beta
         self.beta = np.tensordot(self.Qi_k, r_ann, axes=[[0],[0]])
-        self.beta += self.Bpriors 
+        self.beta += self.Mpriors 
 
         #if no priors were seted as annotator not label all data:---
         mask_zero = self.beta.sum(axis=-1) == 0
@@ -256,7 +248,7 @@ class LabelInf_EM_G(object):
         self.beta = self.beta/self.beta.sum(axis=-1,keepdims=True) #normalize (=p(yo|g,z))
 
     def compute_logL(self):
-        logL_priors = np.sum(self.Bpriors* np.log(self.beta+ self.Keps))
+        logL_priors = np.sum(self.Mpriors* np.log(self.beta+ self.Keps))
         return np.sum( np.log( self.aux_for_like +self.Keps)) + logL_priors
                                                   
     def train(self, r_ann, max_iter=50, tolerance=3e-2):
@@ -298,57 +290,64 @@ class LabelInf_EM_G(object):
     def get_global_confusionM(self):
         return self.get_confusionM()
 
+######################################## BASED ON LEARNING MODELS  ########################################
 
-class ModelInf_EM(object):
+class Super_ModelInf(Super_LabelInf):
     def __init__(self, init_Z='softmv', n_init_Z= 0, priors=0, DTYPE_OP='float32'):
-        self.DTYPE_OP = DTYPE_OP
+        super().__init__(init_Z, priors, DTYPE_OP)
         self.init_Z = init_Z.lower()
-        self.n_init_Z = n_init_Z
-        self.set_priors(priors)
 
-        self.compile=False
-        self.Keps = keras.backend.epsilon()
-        self.init_done = False
-        
     def get_basemodel(self):
         return self.base_model
-    def get_confusionM(self):
-        return self.betas.copy()
-    def get_qestimation(self):
-        return self.Qi_k.copy()
+    
+    def get_predictions(self, X):
+        if self.base_model_lib=="keras":
+            return self.base_model.predict(X, batch_size=self.max_Bsize_base)
+        elif self.base_model_lib =="sklearn":
+            return self.base_model.predict_proba(X)
 
-    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32):
+    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32, lib_model="keras"):
         self.base_model = model
+        self.base_model_lib = lib_model.strip().lower()
         #params:
         self.optimizer = optimizer
         self.epochs = epochs
         self.batch_size = batch_size
 
-        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
-        self.base_model.name = "base_model_z"
+        if self.base_model_lib == "keras":
+            self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
+            self.base_model.name = "base_model_z"
+            self.max_Bsize_base = estimate_batch_size(self.base_model)
+
+        elif self.base_model_lib =="sklearn":
+            args = {'warm_start':True, 'n_jobs':-1}  #keep fiting the model in the EM: warm_start=True
+            aux = [('solver', self.optimizer) , ('max_iter', self.epochs) , ('tol',self.Keps)]
+            for (key, value) in aux:
+                if key in self.base_model.get_params().keys():
+                    args[key] = value
+            self.base_model.set_params(**args)
+
         self.compile = True
-        self.max_Bsize_base = estimate_batch_size(self.base_model)
-        
-    def set_priors(self, priors):
-        if type(priors) == str:
-            if priors.lower() == "laplace":
-                priors = 1
-            elif priors.lower() == "none":
-                priors = 0
-            else:
-                raise Exception('Prior not valid')
-                
-        priors = np.asarray(priors)
-        if len(priors.shape)==0:
-            priors = np.expand_dims(priors, axis=(0,1,2))
-        elif len(priors.shape)==1:
-            priors=np.expand_dims(priors,axis=(1,2))
-        elif len(priors.shape)==2:
-            priors=np.expand_dims(priors,axis=2)
-        self.Mpriors = priors
-            
-    def get_predictions(self,X):
-        return self.base_model.predict(X,batch_size=self.max_Bsize_base)
+
+    def fit_base_model(self, inputs, targets): #try to learn 
+        if self.base_model_lib =="keras":
+            self.base_model.fit(inputs, targets, batch_size=self.batch_size, epochs=self.epochs, verbose=0) 
+        elif self.base_model_lib =="sklearn":
+            self.base_model.fit(inputs, targets.argmax(axis=-1)) #sklearn fit over hard estimation
+
+
+class ModelInf_EM(Super_ModelInf):
+    def __init__(self, init_Z='softmv', n_init_Z= 0, priors=0, DTYPE_OP='float32'):
+        super().__init__(init_Z, n_init_Z, priors, DTYPE_OP)
+        self.compile=False        
+
+    def get_confusionM(self):
+        return self.betas.copy()
+    def get_qestimation(self):
+        return self.Qi_k.copy()
+
+    #def set_model(self, args):
+    #    super().set_model(**args)
         
     def init_E(self, X, y_ann, method=""): 
         print("Initializing new EM...")
@@ -357,7 +356,7 @@ class ModelInf_EM(object):
         if method == "":
             method = self.init_Z
         label_A = LabelAgg(scenario="individual")
-        if "model" in method and self.n_init_Z!= 0:
+        if "model" in method and self.n_init_Z!= 0 and self.base_model_lib == "keras":
             init_GT = label_A.infer(y_ann, method='hardmv', onehot=True) 
             pre_init_F(self.base_model, X, init_GT, self.n_init_Z,batch_size=self.batch_size,reset_optimizer=False)
             init_GT = self.get_predictions(X)
@@ -384,7 +383,7 @@ class ModelInf_EM(object):
 
     def M_step(self,X, y_ann): 
         #-------> base model ---- train to learn p(z|x)
-        self.base_model.fit(X,self.Qi_k,batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+        self.fit_base_model(X, targets=self.Qi_k)
         
         #-------> beta
         self.betas = np.tensordot(self.Qi_k, y_ann, axes=[[0],[0]]).transpose(1,0,2)
@@ -456,7 +455,7 @@ class ModelInf_EM(object):
 
             logL_hist = self.train(X,y_ann,max_iter=max_iter,tolerance=tolerance) 
             found_betas.append(self.betas.copy())
-            found_model.append(self.base_model.get_weights()) #revisar si se resetean los pesos o algo asi..
+            found_model.append(self.base_model.get_weights()) 
             found_logL.append(logL_hist)
             iter_conv.append(self.current_iter-1)
             
@@ -490,7 +489,7 @@ class ModelInf_EM(object):
         return predictions_a  
     
 
-class ModelInf_EM_CMM(object): 
+class ModelInf_EM_CMM(Super_ModelInf): 
     def __new__(cls, M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32'):
         if M == 1:
             return ModelInf_EM_G(init_Z, n_init_Z, priors, DTYPE_OP)
@@ -498,18 +497,10 @@ class ModelInf_EM_CMM(object):
             return super(ModelInf_EM_CMM, cls).__new__(cls)
 
     def __init__(self, M, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32'):
-        self.DTYPE_OP = DTYPE_OP
-        self.init_Z = init_Z.lower()
-        self.n_init_Z = n_init_Z
+        super().__init__(init_Z, n_init_Z, priors, DTYPE_OP)
         self.M = M #groups of annotators
-        self.set_priors(priors)
-
         self.compile=False
-        self.Keps = keras.backend.epsilon()
-        self.init_done = False
         
-    def get_basemodel(self):
-        return self.base_model
     def get_confusionM(self):
         return self.betas.copy()
     def get_alpha(self):
@@ -517,37 +508,6 @@ class ModelInf_EM_CMM(object):
     def get_qestimation(self):
         return self.Qij_mk.copy()
 
-    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32):
-        self.base_model = model
-        self.optimizer = optimizer
-        self.epochs = epochs
-        self.batch_size = batch_size
-
-        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
-        self.base_model.name = "base_model_z"
-        self.compile = True
-        self.max_Bsize_base = estimate_batch_size(self.base_model)
-
-    def set_priors(self, priors):
-        if type(priors) == str:
-            if priors.lower() == "laplace":
-                priors = 1
-            elif priors.lower() == "none":
-                priors = 0
-            else:
-                raise Exception('Prior not valid')
-                
-        priors = np.asarray(priors)
-        if len(priors.shape)==0:
-            priors = np.expand_dims(priors, axis=(0,1,2))
-        elif len(priors.shape)==1:
-            priors=np.expand_dims(priors,axis=(1,2))
-        elif len(priors.shape)==2:
-            priors=np.expand_dims(priors,axis=2)
-        self.Bpriors = priors
-
-    def get_predictions(self,X):
-        return self.base_model.predict(X,batch_size=self.max_Bsize_base) #fast predictions
 
     def init_E(self, X, r_ann, method=""):
         print("Initializing new EM...")
@@ -557,7 +517,7 @@ class ModelInf_EM_CMM(object):
         if method == "":
             method = self.init_Z
         label_A = LabelAgg(scenario="global")
-        if "model" in method and self.n_init_Z!= 0:
+        if "model" in method and self.n_init_Z!= 0 and self.base_model_lib == "keras":
             init_GT = label_A.infer(r_ann, method='hardmv', onehot=True) 
             pre_init_F(self.base_model, X, init_GT, self.n_init_Z,batch_size=self.batch_size,reset_optimizer=False)
             init_GT = self.get_predictions(X)
@@ -594,7 +554,7 @@ class ModelInf_EM_CMM(object):
         
         #-------> base model
         r_estimate = QRij_mk.sum(axis=(1,2))
-        self.base_model.fit(X, r_estimate,batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+        self.fit_base_model(X, targets=r_estimate)
     
         #-------> alpha 
         self.alphas = QRij_mk.sum(axis=(0,1,3)) 
@@ -602,7 +562,7 @@ class ModelInf_EM_CMM(object):
 
         #-------> beta
         self.betas = (QRij_mk.sum(axis=0)).transpose(1,2,0)            
-        self.betas += self.Bpriors 
+        self.betas += self.Mpriors 
 
         #if no priors were seted as annotator not label all data:---
         mask_zero = self.betas.sum(axis=-1) == 0
@@ -612,7 +572,7 @@ class ModelInf_EM_CMM(object):
 
     def compute_logL(self, r_ann):
         """ Compute the log-likelihood of the optimization schedule"""
-        logL_priors = np.sum(self.Bpriors* np.log(self.betas+ self.Keps))
+        logL_priors = np.sum(self.Mpriors* np.log(self.betas+ self.Keps))
         return np.tensordot(r_ann , np.log(self.aux_for_like+self.Keps))+ logL_priors 
                                                   
     def train(self,X_train, r_ann, max_iter=50,tolerance=3e-2):
@@ -735,23 +695,16 @@ class ModelInf_EM_CMM(object):
         return result/result.sum()
 
 
-class ModelInf_EM_CMOA(object):
+class ModelInf_EM_CMOA(Super_ModelInf):
     def __init__(self, M, init_Z="softmv", init_G="", n_init_Z=0, n_init_G=0, priors=0, DTYPE_OP='float32'): 
-        self.DTYPE_OP = DTYPE_OP
-        self.init_Z = init_Z.lower()
+        super().__init__(init_Z, n_init_Z, priors, DTYPE_OP)
         self.init_G = init_G.lower()
-        self.n_init_Z = n_init_Z
         self.n_init_G = n_init_G
         self.M = M #groups of annotators
-        self.set_priors(priors)
 
         self.compile_z = False
         self.compile_g = False
-        self.Keps = keras.backend.epsilon()
-        self.init_done = False
         
-    def get_basemodel(self):
-        return self.base_model
     def get_groupmodel(self):
         return self.group_model
     def get_confusionM(self):
@@ -759,29 +712,20 @@ class ModelInf_EM_CMOA(object):
     def get_qestimation(self):
         return self.reshape_il(self.Qil_mk.copy())
         
-    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32, ann_model=None):
-        #params:
-        self.optimizer = optimizer
-        self.epochs = epochs
-        self.batch_size = batch_size
-
-        self.base_model = model
-        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
-        self.base_model.name = "base_model_z"
+    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32, lib_model="keras", ann_model=None,optimizer_ann="adam"):
+        super().set_model(model, optimizer, epochs, batch_size, lib_model)
         self.compile_z = True
-        self.max_Bsize_base = estimate_batch_size(self.base_model)
-
+        
         if type(ann_model) != type(None):
-            self.set_ann_model(ann_model)
+            self.set_ann_model(ann_model, optimizer=optimizer_ann)
         
     def set_ann_model(self, model, optimizer=None, epochs=None):
         if type(optimizer) == type(None): 
             optimizer = self.optimizer
 
-        if type(epochs) == type(None): 
-            self.group_epochs = self.epochs #set epochs of base model
-        else:
-            self.group_epochs = epochs
+        self.group_epochs = epochs
+        if type(self.group_epochs) == type(None): 
+            self.group_epochs = self.epochs #set epochs of base model            
 
         self.group_model = model
         self.group_model.compile(optimizer=optimizer, loss='categorical_crossentropy') 
@@ -789,26 +733,8 @@ class ModelInf_EM_CMOA(object):
         self.compile_g = True
         self.max_Bsize_group = estimate_batch_size(self.group_model)
 
-    def set_priors(self, priors):
-        if type(priors) == str:
-            if priors.lower() == "laplace":
-                priors = 1
-            elif priors.lower() == "none":
-                priors = 0
-            else:
-                raise Exception('Prior not valid')
-                
-        priors = np.asarray(priors)
-        if len(priors.shape)==0:
-            priors = np.expand_dims(priors, axis=(0,1,2))
-        elif len(priors.shape)==1:
-            priors=np.expand_dims(priors,axis=(1,2))
-        elif len(priors.shape)==2:
-            priors=np.expand_dims(priors,axis=2)
-        self.Bpriors = priors
-
     def get_predictions_z(self, X):
-        return self.base_model.predict(X, batch_size=self.max_Bsize_base) 
+        return super().get_predictions(X) 
 
     def get_predictions_g(self, A):
         return self.group_model.predict(A, batch_size=self.max_Bsize_group)
@@ -838,7 +764,7 @@ class ModelInf_EM_CMOA(object):
         if method == "":
             method = self.init_Z
         label_A = LabelAgg(scenario="individual", sparse=True)
-        if "model" in method and self.n_init_Z!= 0:
+        if "model" in method and self.n_init_Z!= 0 and self.base_model_lib == "keras":
             init_GT = label_A.infer(y_ann_var, method='hardmv', onehot=True) 
             pre_init_F(self.base_model, X, init_GT, self.n_init_Z,batch_size=self.batch_size,reset_optimizer=False)
             init_GT = self.get_predictions_z(X)
@@ -905,7 +831,7 @@ class ModelInf_EM_CMOA(object):
         for i, t_i in enumerate(self.T_i):
             lim_sup  += t_i
             r_estimate[i] = self.Qil_mk[lim_sup-t_i : lim_sup].sum(axis=(0,1)) #create the "estimate"/"ground truth"
-        self.base_model.fit(X, r_estimate, batch_size=self.batch_size, epochs=self.epochs,verbose=0) 
+        self.fit_base_model(X, targets=r_estimate)
 
         #-------> alpha 
         Qil_m_flat = self.Qil_mk.sum(axis=-1)  #qil(m)
@@ -913,7 +839,7 @@ class ModelInf_EM_CMOA(object):
 
         #-------> beta
         self.betas =  np.tensordot(self.Qil_mk, y_ann_flatten , axes=[[0],[0]]) # ~p(yo=j|g,z) 
-        self.betas += self.Bpriors 
+        self.betas += self.Mpriors 
 
         #if no priors were seted as annotator not label all data:---
         mask_zero = self.betas.sum(axis=-1) == 0
@@ -922,7 +848,7 @@ class ModelInf_EM_CMOA(object):
         self.betas = self.betas/self.betas.sum(axis=-1,keepdims=True) #normalize (=p(yo|g,z))
 
     def compute_logL(self):
-        logL_priors = np.sum(self.Bpriors* np.log(self.betas+ self.Keps))
+        logL_priors = np.sum(self.Mpriors* np.log(self.betas+ self.Keps))
         return np.sum( np.log(self.aux_for_like+self.Keps) )  #safe logarithm
                                                   
     def train(self, X_train, y_ann_var, A_idx_var, max_iter=50, tolerance=3e-2):
@@ -1039,54 +965,16 @@ class ModelInf_EM_CMOA(object):
 
 
 
-class ModelInf_EM_G(object): 
+class ModelInf_EM_G(Super_ModelInf): 
     def __init__(self, init_Z="softmv", n_init_Z=0, priors=0, DTYPE_OP='float32'):
-        self.DTYPE_OP = DTYPE_OP
-        self.init_Z = init_Z.lower()
-        self.n_init_Z = n_init_Z
-        self.set_priors(priors)
-
+        super().__init__(init_Z, n_init_Z, priors, DTYPE_OP)
+        super().set_priors(priors, globalM=True)
         self.compile=False
-        self.Keps = keras.backend.epsilon()
-        self.init_done = False
         
-    def get_basemodel(self):
-        return self.base_model
     def get_confusionM(self):
         return self.beta.copy()
     def get_qestimation(self):
         return self.Qi_k.copy()
-
-    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32):
-        self.base_model = model
-        #params:
-        self.optimizer = optimizer
-        self.epochs = epochs
-        self.batch_size = batch_size
-
-        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
-        self.base_model.name = "base_model_z"
-        self.compile = True
-        self.max_Bsize_base = estimate_batch_size(self.base_model)
-
-    def set_priors(self, priors):
-        if type(priors) == str:
-            if priors.lower() == "laplace":
-                priors = 1
-            elif priors.lower() == "none":
-                priors = 0
-            else:
-                raise Exception('Prior not valid')
-                
-        priors = np.asarray(priors)
-        if len(priors.shape)==0:
-            priors = np.expand_dims(priors, axis=(0,1))
-        elif len(priors.shape)==1:
-            priors=np.expand_dims(priors,axis=(1))
-        self.Bpriors = priors
-
-    def get_predictions(self,X):
-        return self.base_model.predict(X,batch_size=self.max_Bsize_base) #fast predictions
 
     def init_E(self, X, r_ann, method=""):
         print("Initializing new EM...")
@@ -1096,7 +984,7 @@ class ModelInf_EM_G(object):
         if method == "":
             method = self.init_Z
         label_A = LabelAgg(scenario="global")
-        if "model" in method and self.n_init_Z!= 0:
+        if "model" in method and self.n_init_Z!= 0 and self.base_model_lib == "keras":
             init_GT = label_A.infer(r_ann, method='hardmv', onehot=True) 
             pre_init_F(self.base_model, X, init_GT, self.n_init_Z,batch_size=self.batch_size,reset_optimizer=False)
             init_GT = self.get_predictions(X)
@@ -1123,11 +1011,11 @@ class ModelInf_EM_G(object):
     
     def M_step(self, X, r_ann): 
         #-------> base model
-        self.base_model.fit(X, self.Qi_k, batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+        self.fit_base_model(X, targets=self.Qi_k)
     
         #-------> beta
         self.beta = np.tensordot(self.Qi_k, r_ann, axes=[[0],[0]])
-        self.beta += self.Bpriors 
+        self.beta += self.Mpriors 
 
         #if no priors were seted as annotator not label all data:---
         mask_zero = self.beta.sum(axis=-1) == 0
@@ -1138,7 +1026,7 @@ class ModelInf_EM_G(object):
 
     def compute_logL(self):
         """ Compute the log-likelihood of the optimization schedule"""
-        logL_priors = np.sum(self.Bpriors* np.log(self.beta+ self.Keps))
+        logL_priors = np.sum(self.Mpriors* np.log(self.beta+ self.Keps))
         return np.sum( np.log( self.aux_for_like +self.Keps)) + logL_priors
                                                   
     def train(self,X_train, r_ann, max_iter=50, tolerance=3e-2):
@@ -1232,36 +1120,18 @@ class ModelInf_EM_G(object):
         return np.tensordot(prob_Z_ik ,self.beta,axes=[[1],[0]] ) #sum_z p(z|xi) * p(yo|z,g)
 
 
-class ModelInf_EM_R(object):
+class ModelInf_EM_R(Super_ModelInf):
     def __init__(self, init_R='original', DTYPE_OP='float32'):
+        super().__init__(init_Z="", n_init_Z=None, priors=0, DTYPE_OP=DTYPE_OP)
         self.DTYPE_OP = DTYPE_OP
         self.init_R = init_R.lower()
-
         self.compile=False
-        self.Keps = keras.backend.epsilon()
-        self.init_done = False
-        
-    def get_basemodel(self):
-        return self.base_model
+
     def get_b(self):
         return self.b
     def get_restimation(self):
         return self.Ri_l.copy()
 
-    def set_model(self, model, optimizer="adam", epochs=1, batch_size=32):
-        self.base_model = model
-        self.optimizer = optimizer
-        self.epochs = epochs
-        self.batch_size = batch_size
-
-        self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
-        self.base_model.name = "base_model_z"
-        self.compile = True
-        self.max_Bsize_base = estimate_batch_size(self.base_model)
-            
-    def get_predictions(self,X):
-        return self.base_model.predict(X, batch_size=self.max_Bsize_base)
-    
     def init_E(self, X, y_ann, method=""): 
         print("Initializing new EM...")
         self.N, self.T, self.K = y_ann.shape
@@ -1287,7 +1157,7 @@ class ModelInf_EM_R(object):
         print("R estimate shape: ",self.Ri_l.shape)
         self.init_done=True
         
-    def E_step(self,X, y_ann,predictions=[]):
+    def E_step(self,X, y_ann,predictions=[]): ####### REVISAR
         if len(predictions)==0:
             predictions = self.get_predictions(X) 
         b_aux = self.b[None,:,:]
@@ -1295,27 +1165,25 @@ class ModelInf_EM_R(object):
 
         A1 = np.log(b_aux +self.Keps) + ((y_ann*np.log(p_z +self.Keps)).sum(axis=-1))[:,:,None]
         A1 = np.exp(A1)
-        A2 = np.log(1-b_aux + self.Keps) + np.log(1./self.K)
+        A2 = np.log(1-b_aux + self.Keps) - np.log(self.K)
         A2  = np.exp(A2)
 
-        self.sum_unnormalized_q = (A1 + A2)
-                
-        self.Ri_l = A1/self.sum_unnormalized_q
+        self.Ri_l = A1/(A1+A2) 
         self.Ri_l[self.mask_not_ann] = 0 #non label
-        self.sum_unnormalized_q[self.mask_not_ann] = 0 #non label
         self.Ri_l = self.Ri_l.astype(self.DTYPE_OP)
 
+        self.sum_unnormalized_q = (A1 + A2)[~self.mask_not_ann].sum(axis=-1)
+        
     def M_step(self,X, y_ann): 
         #-------> base model ---- train to learn p(z|x)
         R_ik = (y_ann * self.Ri_l).sum(axis=1)
-        self.base_model.fit(X, R_ik, batch_size=self.batch_size,epochs=self.epochs,verbose=0) 
+        self.fit_base_model(X, targets=R_ik)
         
         #-------> b
         self.b = self.Ri_l.sum(axis=0)/self.Nt[:,None]
-        #self.b = self.Ri_l.mean(axis=0) 
         
     def compute_logL(self):
-        return np.sum( np.log(self.sum_unnormalized_q.sum(axis=-1) +self.Keps))
+        return np.sum( np.log(self.sum_unnormalized_q +self.Keps))
         
     def train(self,X_train,y_ann,max_iter=50,tolerance=3e-2):   
         if not self.compile:
