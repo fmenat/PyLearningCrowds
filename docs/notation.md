@@ -4,7 +4,7 @@
 ### Supervised Scenario
 * Consider an input pattern <img src="https://render.githubusercontent.com/render/math?math=x \in \mathbb{X}"> observed with probability distribution <img src="https://render.githubusercontent.com/render/math?math=p(x)"> and a ground-truth label <img src="https://render.githubusercontent.com/render/math?math=z \in \mathbb{Z}"> observed with conditional probability distribution <img src="https://render.githubusercontent.com/render/math?math=p(z|x)">.
 * Given a finite sample <img src="https://render.githubusercontent.com/render/math?math=S=\{\left(x_{i},z_{i}\right)\}_{i=1}^N">, where <img src="https://render.githubusercontent.com/render/math?math=\left(x_{i},z_{i}\right) \sim p(x,z)=p(z|x)p(x) \, \ \forall i \in [N]">. 
-* Objective: estimate a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> that maps <img src="https://render.githubusercontent.com/render/math?math=x \rightarrow z"> or learn statistics of <img src="https://render.githubusercontent.com/render/math?math=p(z|x)">.
+* Objective: estimate a predictive model <img src="https://render.githubusercontent.com/render/math?math=f(x)"> that maps <img src="https://render.githubusercontent.com/render/math?math=x \rightarrow z"> or learn statistics of <img src="https://render.githubusercontent.com/render/math?math=p(z|x)">, where <img src="https://render.githubusercontent.com/render/math?math=f_k(x) = p(z=k|x)">.
 
 <img src="https://miro.medium.com/max/1204/0*qf-O7Jm1mmZrXYqA" width="50%" />
     

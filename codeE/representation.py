@@ -25,18 +25,17 @@ def annotations2global(obs, no_label=-1):
         globals_obs = np.sum(obs,axis=1,dtype='int32')
     return globals_obs 
     
-def set_representation(y_obs, needed="onehot"):
+def set_representation(y_obs, needed="onehot", no_label = -1, mask_s = 0):
     if needed.lower()=="onehot" or needed.lower()=="one-hot":
-        return categorical_representation(y_obs)
+        return categorical_representation(y_obs, no_label=no_label, mask_s=mask_s)
     elif needed.lower()=="global":
-        return global_representation(y_obs)
+        return global_representation(y_obs, no_label=no_label)
     elif needed.lower()=='onehotvar' or needed.lower()=='variable':
-        return categorical_var_representation(y_obs)
+        return categorical_var_representation(y_obs, no_label=no_label)
     elif needed.lower()=='onehotmasked' or needed.lower()=='rodriguesmasked':
-        return categorical_masked_representation(y_obs)
+        return categorical_masked_representation(y_obs, no_label=no_label)
 
 def global_representation(obs,no_label =-1):
-    """Representation to global representation, (N,K), the repeats of annotations"""
     N, T = obs.shape
     K = int(np.max(obs)+1) # assuming that are indexed in order
     globals_obs = np.zeros((N,K),dtype='int32')
@@ -46,11 +45,10 @@ def global_representation(obs,no_label =-1):
             globals_obs[i,obs[i,t]] +=1
     return globals_obs
 
-def categorical_representation(obs,no_label =-1):
-    """Representation to one hot vectors, (N,T,K), masked with 0 """
+def categorical_representation(obs, no_label =-1, mask_s=0):
     N,T = obs.shape
     K = int(np.max(obs)+1) # assuming that are indexed in order
-    y_obs_categorical = np.zeros((N,T,K),dtype='int8') #solo 0 o 1
+    y_obs_categorical = mask_s*np.ones((N,T,K),dtype='int8') 
     for i in range(N):
         A_i = np.where(obs[i] != no_label)[0]
         for t in A_i:
@@ -59,18 +57,13 @@ def categorical_representation(obs,no_label =-1):
     return y_obs_categorical
 
 def categorical_masked_representation(obs, no_label=-1):
-    """Representation to one hot vectors, (N,K,T), masked with -1 """
     if len(obs.shape)!=3:
-        y_obs_catmasked = categorical_representation(obs,no_label)
+        y_obs_catmasked = categorical_representation(obs,no_label, mask_s=-1)
     else:
         y_obs_catmasked = obs
-    mask =  np.sum(y_obs_catmasked,axis=-1)  == 0
-    #if annotator do not annotate a data her one-hot is full of -1
-    y_obs_catmasked[mask] = -1
     return y_obs_catmasked.transpose(0,2,1)
 
 def categorical_var_representation(obs, no_label=-1):
-    """Representation to one hot vectors of variable lengths, (N,T_i,K), no masked"""
     N,T = obs.shape
     K = int(np.max(obs)+1) # assuming that are indexed in order
     y_obs_var, A_idx_var = [], []

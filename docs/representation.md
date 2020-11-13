@@ -45,10 +45,10 @@ Individual representations could be transformed to global (**not the opposite**)
 ---
 ### Transform representation 
 ```python
-codeE.representation.set_representation(y_obs, needed="onehot")
+codeE.representation.set_representation(y_obs, needed="onehot", no_label = -1, mask_s = 0)
 ```
 Change representation on crowdsourcing scenario.
-representation
+
 **Parameters**  
 * **y_obs: *array-like of shape (n_samples, n_annotators)***  
 The multiple annotations observed by the data by every annotators, the class gives by each annotators, if annotator does not annotates there must be a "-1" in the representation. 
@@ -60,6 +60,13 @@ The representation to be seted
 > 'global': number of annotations gives per every label between all the annotators  
 
 > 'onehotvar' or 'variable': categorical representation of variable length, from only anotators that annotate the data.
+
+* **no_label: *int, default=-1***  
+The int value used to find where an annotator does not label some data
+
+ * **onehot: *int, default=0***  
+On *onehot* representation correspond to the symbol to mask when there is no labels for some annotator.
+
 
 **Returns**  
 * **new_annotations: *array-like of shape***  

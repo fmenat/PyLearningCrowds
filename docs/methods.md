@@ -17,6 +17,9 @@ The available methods:
 * [Crowd - Mixture of Annotators](#model-and-annotators-group-inference-based-on-em---confusion-matrix): inference of model and groups on annotations of the annotators.  
 * [Global Model - Label Noise](#model-inference-based-on-em---label-noise): inference of model and global behavior of annotations, as a label noise problem (only one confusion matrix).  
 * [Multiple-Annotator Logistic Regression](#model-inference-based-on-em---reliability): predictive model over GT inference based on annotators reliability.
+* [Rodrigues & Pereira - CrowdLayer](#model-inference-based-on-bp---confusion-matrix): The Raykar et al. model trained only with backpropagation.  
+* [Goldberger & Ben-Reuven - NoiseLayer](#model-inference-based-on-bp---label-noise): The Global Model - Label Noise trained only with backpropagation.
+
 
 > Comparison over the methods could be found on [Comparison](./comparison.md)
 
@@ -282,7 +285,7 @@ Annotations of the data, should be the individual one-hot (categorical) represen
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between the iterations to train.
 
 ```python
 fit(*args)
@@ -452,7 +455,7 @@ Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 ```python
 fit(R, runs = 1, max_iter=50, tolerance=3e-2)
@@ -558,7 +561,7 @@ raykar_fx.predict(new_X)
 |*train*| Perform all the inference based on EM algorithm|
 |*multiples_run*| Perform multiple runs of the EM algorithm and save the best|
 |*fit*| same as *multiples_run* |
-|*get_ann_confusionM*| Returns the estimation of individual confusion matrices estimation|
+|*get_ann_confusionM*| Returns the estimation of individual confusion matrices|
 |*get_predictions*| Returns the probability predictions of ground truth over some set|
 |*get_predictions_annot*| Returns the probability estimation of labels over some set for each annotator|
 
@@ -661,7 +664,7 @@ Annotations of the data, should be the individual one-hot (categorical) represen
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 ```python
 multiples_run(Runs, X, y_ann, max_iter=50, tolerance=3e-2)
@@ -678,7 +681,7 @@ Annotations of the data, should be the individual one-hot (categorical) represen
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 **Returns**  
 * **found_logL: *list of length=Runs***  
@@ -707,7 +710,7 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = \hat{p}(z|x)">
 
 
 ```python
@@ -932,7 +935,7 @@ Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 ```python
 multiples_run(Runs, X, r_ann, max_iter=50, tolerance=3e-2)
@@ -949,7 +952,7 @@ Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 **Returns**  
 * **found_logL: *list of length=Runs***  
@@ -971,7 +974,7 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = \hat{p}(z|x)">
 
 ```python
 get_global_confusionM()
@@ -1256,7 +1259,7 @@ Identifier of the annotator of each annotations in *y_ann_var*.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 ```python
 multiples_run(Runs, X, y_ann_var, A_idx_var, max_iter=50, tolerance=3e-2)
@@ -1275,7 +1278,7 @@ Identifier of the annotator of each annotations in *y_ann_var*.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 **Returns**  
 * **found_logL: *list of length=Runs***  
@@ -1297,7 +1300,7 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f_k(x) = \hat{p}(z=k|x)">
 
 ```python
 get_predictions_g(A)
@@ -1308,7 +1311,7 @@ The identifier of *n_annotators_pred* annotators to assign groups.
 
 **Returns**  
 * **prob_G_hat: *array-like of shape (n_annotators_pred, n_groups)***  
-The probability predictions over the groups of some annotators <img src="https://render.githubusercontent.com/render/math?math=h(a) = p(g|a)">
+The probability predictions over the groups of some annotators <img src="https://render.githubusercontent.com/render/math?math=h_m(a) = p(g=m|a)">
 
 ```python
 get_global_confusionM(prob_Gt)
@@ -1535,7 +1538,7 @@ Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 ```python
 multiples_run(Runs,X,r_ann,max_iter=50,tolerance=3e-2)
@@ -1552,7 +1555,7 @@ Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 **Returns**  
 * **found_logL: *list of length=Runs***  
@@ -1574,7 +1577,7 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f_k(x) = \hat{p}(z=k|x)">
 
 ```python
 get_global_confusionM()
@@ -1764,7 +1767,7 @@ Annotations of the data, should be the individual one-hot (categorical) represen
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 ```python
 multiples_run(Runs, X, y_ann, max_iter=50, tolerance=3e-2)
@@ -1781,7 +1784,7 @@ Annotations of the data, should be the individual one-hot (categorical) represen
 * **max_iter: *int, default=50***  
 The maximum number of iterations to iterate between E and M.
 * **tolerance: *float, default=3e-2***  
-The maximus difference on the parameters and loss between  the iterations to train.
+The maximum relative difference on the parameters and loss between  the iterations to train.
 
 **Returns**  
 * **found_logL: *list of length=Runs***  
@@ -1811,4 +1814,414 @@ Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
-The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f(x) = p(z|x)">
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f_k(x) = \hat{p}(z=k|x)">
+
+
+
+---
+### Model Inference based on BP - Confusion Matrix
+```python
+class codeE.methods.ModelInf_BP(init_Z='softmv', n_init_Z= 0, prior_lamb=0, init_conf = "default")
+```
+[UP](#crowdsourcing-methods)
+
+This method is an extension of [Raykar et al](#model-inference-based-on-em---confusion-matrix) that avoids the use of the EM algorithm by encoding the confusion matrix as weights (based on a **CrowdLayer** [1]) of a big neural network named *crowd model*: <img src="https://render.githubusercontent.com/render/math?math=c_j(x)^{(t)} =\text{softmax}( \sum_k^K f_k(x) \cdot \tilde{\beta}_{k,j}^{(t)} )">. Where <img src="https://render.githubusercontent.com/render/math?math=f_k(x)=\hat{p}(z=k|x)"> is the predictive model and <img src="https://render.githubusercontent.com/render/math?math=\tilde{\beta}_{k,j}^{(t)}"> are the confusion weights.
+
+The original method (deep learning from crowds) that trains the *crowd model* only by backpropagation (BP) was proposed by Rodrigues & Pereira [1].
+> It is proposed on the *global* representation. (for further details see [representation documentation](representation.md))
+
+**Parameters**  
+* **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
+The method used to initialize the ground truth probabilities for pre-init the base model: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. The *softmv* and *hardmv* posibilities are based on [LabelAgg class](#simple-aggregation-techniques). Only used if *n_init_Z!=0*
+* **n_init_Z: *int, default=0***  
+The number of epochs that the base predictive model is going to be pre-trained/pre-init.
+* **prior_lamb: *float, default=0***  
+The hyper-parameter used in the loss function to weight the prior on the opinion of the majority
+* **init_conf: *string, {'default','', 'model', 'soft'} default='default'***  
+The method used to initialize the confusion matrix weights inside the model <img src="https://render.githubusercontent.com/render/math?math=\tilde{\beta}_{k,j}^{(t)}">, 'default' or empty it use the original proposed in [1], identity matrix. 'soft' is a soft version of the identity matrix based on a 15% of noise level. The 'model' use the confusion matrix of the pre-init/pre-trained base model as initialization (proposed in [Goldberger & Ben-Reuven](#model-inference-based-on-bp---label-noise)), only available if *n_init_Z!=0*.  
+
+
+##### References
+[1] [Rodrigues, F., & Pereira, F. (2017). *Deep learning from crowds.*](https://arxiv.org/pdf/1709.01779.pdf)  
+[2] [Github code - fmpr/CrowdLayer](https://github.com/fmpr/CrowdLayer)
+
+##### Examples
+```python
+X_train = ...
+... #read some data 
+from codeE.representation import set_representation
+y_obs_categorical = set_representation(y_obs,'onehot') 
+```
+> Define predictive model (based on keras)
+```python
+F_model = Sequential()
+... #add layers
+```
+> Set the model and train the method
+```python
+from codeE.methods import ModelInf_BP as Rodrigues18
+Ro_model = Rodrigues18()
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+Ro_model.set_model(F_model, **args)
+Ro_model.fit(X_train, y_obs_categorical)
+```
+> Train with different settings 
+```python
+from codeE.methods import ModelInf_BP as Rodrigues18
+Ro_model = Rodrigues18(init_Z='softmv', n_init_Z=3, init_conf="model")
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+Ro_model.set_model(F_model, **args)
+Ro_model.fit(X_train, y_obs_categorical, runs=10)
+```
+> Get the base model to predict the ground truth on some data
+```python
+learned_fx = Ro_model.get_basemodel()
+learned_fx.predict(new_X)
+```
+
+##### Class Methods
+|Function|Description|
+|---|---|
+|*get_basemodel*| Returns the predictive model of the ground truth|
+|*get_confusionM*| Returns the modeled weights of confusion matrices|
+|*set_model*| Set the predictive model (base model) class|
+|*set_crowdL_model*| Set the auxiliar crowd model to learning from crowds|
+|*init_model*| Initialization of the model weights|
+|*train*| Perform the learning based on backpropagation algorithm|
+|*multiples_run*| Performs multiple runs of the learning and save the best weights|
+|*fit*| same as *multiples_run* |
+|*get_ann_confusionM*| Returns the estimation of individual confusion matrices|
+|*get_predictions_annot*| Returns the probability estimation of labels over some set for each annotator|
+
+
+```python
+get_basemodel()
+```
+**Returns**  
+* **base_model: *function or class***  
+The predictive model over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f(\cdot)">
+
+```python
+get_confusionM()
+```
+**Returns**  
+* **betas: *array-like of shape (n_annotators, n_classes, n_classes)***  
+The modeled weights of confusion matrices <img src="https://render.githubusercontent.com/render/math?math=\tilde{\beta}_{k,j}^{(t)}"> in the auxiliar neural network <img src="https://render.githubusercontent.com/render/math?math=c_j(\cdot)^{(t)}">, not bounded as probabilities, i.e. does not sum one over the observed labels *j*.
+
+```python
+set_model(model, optimizer="adam", batch_size=32)
+```
+Set the predictive model (base model) over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f_k(x)"> and define how to optimize it on the backpropagation.
+
+**Parameters**  
+* **model: *function or class of keras model***  
+Predictive model based on [Keras](https://keras.io/).
+* **optimizer: *string, {'sgd','rmsprop','adam','adadelta','adagrad'}, default='adam'***  
+String name of optimizer used on the back-propagation SGD, based on https://keras.io/api/optimizers/
+* **batch_size: *int, default=32***  
+Number of samples per gradient update, based on https://keras.io/api/models/model_training_apis/
+
+```python
+set_crowdL_model(set_w = False, weights=0)
+```
+Set the auxiliar crowd model to learning from crowds <img src="https://render.githubusercontent.com/render/math?math=c_j(x)^{(t)}">, based on neural networks.
+
+**Parameters**  
+* **set_w: *boolean, default=False***  
+If a weight matrix for initialization of the confusion weights is going to be seted.
+* **weights: *array-like of shape (n_classes, n_classes, n_annotators), default=False***  
+The confusion matrix weights used as initialization values on the auxiliar crowd model. Only used if *set_w=True*.
+
+
+```python
+init_model(X, y_ann, method="")
+```
+Initialization of the neural network weights.
+
+**Parameters**  
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of the data.  
+* **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
+Annotations of the data, should be the individual one-hot (categorical) representation.
+* **method: *string, {'softmv','hardmv',''}, default=''***  
+The method used to initialize the ground truth probabilities: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAgg class. The empty string will use the method seted on init.
+
+```python
+train(X_train, y_ann, max_iter=50,tolerance=1e-2)
+```
+Perform the learning of the neural network weights based on backpropagation algorithm.
+
+**Parameters** 
+* **X_train: *array-like of shape (n_samples, ...)***  
+Input patterns of the training data. 
+* **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
+Annotations of the data, should be the individual one-hot (categorical) representation.
+* **max_iter: *int, default=50***  
+The maximum number of iterations to iterate between E and M.
+* **tolerance: *float, default=1e-2***  
+The maximum relative difference on the loss between the iterations of learning.
+
+```python
+multiples_run(Runs, X, y_ann, max_iter=50, tolerance=1e-2)
+```
+Performs multiple runs of the neural network learning and save the best weights
+
+**Parameters** 
+* **Runs: *int***  
+The number of times the EM will be run to obtain different results.
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of the training data. 
+* **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
+Annotations of the data, should be the individual one-hot (categorical) representation.
+* **max_iter: *int, default=50***  
+The maximum number of iterations to iterate between E and M.
+* **tolerance: *float, default=1e-2***  
+The maximum relative difference on the loss between the iterations of learning.
+
+**Returns**  
+* **found_loss: *list of length=Runs***  
+A list with the history of loss for each iteration in the different runs
+* **best_run: *int***  
+The index of the best run between all executed, a number between *0* and *Runs-1*.
+
+```python
+fit(X,Y, runs = 1, max_iter=50, tolerance=1e-2)
+```
+same operation than *multiples_run* function.
+
+```python
+get_ann_confusionM(norm="")
+```
+**Parameters** 
+* **norm: *string, {'softmax', '01', ''}, default=''***  
+The normalize method used to obtain the individual confusion matrices estimation. Empty string does not use a normalization step, 'softmax' use the softmax function and '01' use a 0-1 range scaler as the proposed in [2].
+
+**Returns**  
+* **prob_Y_Zt: *array-like of shape (n_annotators, n_classes, n_classes)***  
+The estimation of individual confusion matrix of each annotator: <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}^{(t)}">.
+
+```python
+get_predictions(X)
+```
+**Parameters** 
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of some data. 
+
+**Returns**  
+* **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f_k(x) = \hat{p}(z=k|x)">
+
+```python
+get_predictions_annot(X)
+```
+**Parameters** 
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of some data. 
+
+**Returns**  
+* **prob_Y_xt: *array-like of shape (n_samples, n_annotators, n_classes)***  
+The probability estimation of labels over some set for each annotator <img src="https://render.githubusercontent.com/render/math?math=c_{j}(x)^{(t)}">.
+
+
+---
+### Model Inference based on BP - Label Noise
+```python
+class codeE.methods.ModelInf_BP_G(init_Z='softmv', n_init_Z= 0, init_conf = "default")
+```
+[UP](#crowdsourcing-methods)
+
+This method is an extension of [Global Model - Label Noise](#model-inference-based-on-em---label-noise) that avoids the use of the EM algorithm by encoding the *noise channel* as weights (based on a **NoiseLayer**) of a big neural network named *crowd noise model*: <img src="https://render.githubusercontent.com/render/math?math=n_j(x) =\sum_{k}^K f_k(x) \cdot \text{softmax}(\tilde{\beta}_{k,j})">. Where <img src="https://render.githubusercontent.com/render/math?math=f_k(x)=\hat{p}(z=k|x)"> is the predictive model and <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j} = \text{softmax}(\tilde{\beta}_{k,j})"> are the confusion weights or noise weights.
+
+The original method (s-model) that trains the *crowd noise model* only by backpropagation (BP) was proposed by Goldberger & Ben-Reuven [1].
+> It is proposed on the *global* representation. (for further details see [representation documentation](representation.md))
+
+**Parameters**  
+* **init_Z: *string, {'softmv','hardmv'}, default='softmv'***  
+The method used to initialize the ground truth probabilities for pre-init the base model: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. The *softmv* and *hardmv* posibilities are based on [LabelAgg class](#simple-aggregation-techniques). Only used if *n_init_Z!=0*
+* **n_init_Z: *int, default=0***  
+The number of epochs that the base predictive model is going to be pre-trained/pre-init.
+* **init_conf: *string, {'default','', 'model'} default='default'***  
+The method used to initialize the confusion matrix weights inside the model <img src="https://render.githubusercontent.com/render/math?math=\tilde{\beta}_{k,j}">, both options are proposed in [2]. 'default' or empty it use the , a soft identity matrix based on a 15% of noise level. The 'model' use the confusion matrix of the pre-init/pre-trained base model as initialization, only available if *n_init_Z!=0*.  
+
+
+##### References
+[1] [Goldberger, J., & Ben-Reuven, E. (2016). *Training deep neural-networks using a noise adaptation layer*.](https://openreview.net/pdf?id=H12GRgcxg)  
+[2] [Github code - udibr/noisy_labels](https://github.com/udibr/noisy_labels)
+
+##### Examples
+```python
+X_train = ...
+... #read some data 
+from codeE.representation import set_representation
+r_obs = set_representation(y_obs,"global")
+```
+> Define predictive model (based on keras)
+```python
+F_model = Sequential()
+... #add layers
+```
+> Set the model and train the method
+```python
+from codeE.methods import ModelInf_BP_G as G_Noise
+GNoise_model = G_Noise()
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+GNoise_model.set_model(F_model, **args)
+GNoise_model.fit(X_train, r_obs)
+```
+> Train with different settings 
+```python
+from codeE.methods import ModelInf_BP_G as G_Noise
+GNoise_model = G_Noise(init_Z='softmv', n_init_Z=3, init_conf="model")
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+GNoise_model.set_model(F_model, **args)
+GNoise_model.fit(X_train, r_obs, runs=10)
+```
+> Get the base model to predict the ground truth on some data
+```python
+learned_fx = GNoise_model.get_basemodel()
+learned_fx.predict(new_X)
+```
+
+##### Class Methods
+|Function|Description|
+|---|---|
+|*get_basemodel*| Returns the predictive model of the ground truth|
+|*get_confusionM*| Returns the modeled weights of confusion matrices|
+|*set_model*| Set the predictive model (base model) class|
+|*set_crowdL_model*| Set the auxiliar crowd model to learning from crowds|
+|*init_model*| Initialization of the model weights|
+|*train*| Perform the learning based on backpropagation algorithm|
+|*multiples_run*| Performs multiple runs of the learning and save the best weights|
+|*fit*| same as *multiples_run* |
+|*get_global_confusionM*| Returns the estimation of global confusion matrices|
+|*get_predictions_global*| Returns the probability estimation of labels over crowdsourcing scenario|
+
+
+
+```python
+get_basemodel()
+```
+**Returns**  
+* **base_model: *function or class***  
+The predictive model over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f(\cdot)">
+
+```python
+get_confusionM()
+```
+**Returns**  
+* **beta: *array-like of shape (n_classes, n_classes)***  
+The modeled weights of confusion matrices <img src="https://render.githubusercontent.com/render/math?math=\tilde{\beta}_{k,j}"> in the auxiliar neural network <img src="https://render.githubusercontent.com/render/math?math=n_j(\cdot)">, not bounded as probabilities, i.e. does not sum one over the observed labels *j*.
+
+```python
+set_model(model, optimizer="adam", batch_size=32)
+```
+Set the predictive model (base model) over the ground truth <img src="https://render.githubusercontent.com/render/math?math=f_k(x)"> and define how to optimize it on the backpropagation.
+
+**Parameters**  
+* **model: *function or class of keras model***  
+Predictive model based on [Keras](https://keras.io/).
+* **optimizer: *string, {'sgd','rmsprop','adam','adadelta','adagrad'}, default='adam'***  
+String name of optimizer used on the back-propagation SGD, based on https://keras.io/api/optimizers/
+* **batch_size: *int, default=32***  
+Number of samples per gradient update, based on https://keras.io/api/models/model_training_apis/
+
+```python
+set_crowdL_model(set_w = False, weights=0)
+```
+Set the auxiliar crowd model to learning from crowds <img src="https://render.githubusercontent.com/render/math?math=c_j(x)">, based on neural networks.
+
+**Parameters**  
+* **set_w: *boolean, default=False***  
+If a weight matrix for initialization of the confusion weights is going to be seted.
+* **weights: *array-like of shape (n_classes, n_classes), default=False***  
+The confusion matrix weights used as initialization values on the auxiliar crowd model. Only used if *set_w=True*.
+
+
+```python
+init_model(X, r_ann, method="")
+```
+Initialization of the neural network weights.
+
+**Parameters**  
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of the data.  
+* **r_ann: *array-like of shape (n_samples, n_classes)***  
+Annotations of the data, should be on the global representation.
+* **method: *string, {'softmv','hardmv',''}, default=''***  
+The method used to initialize the ground truth probabilities: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. Both posibilities are based on LabelAgg class. The empty string will use the method seted on init.
+
+```python
+train(X_train, r_ann, max_iter=50,tolerance=1e-2)
+```
+Perform the learning of the neural network weights based on backpropagation algorithm.
+
+**Parameters** 
+* **X_train: *array-like of shape (n_samples, ...)***  
+Input patterns of the training data. 
+* **r_ann: *array-like of shape (n_samples, n_classes)***  
+Annotations of the data, should be on the global representation.
+* **max_iter: *int, default=50***  
+The maximum number of iterations to iterate between E and M.
+* **tolerance: *float, default=1e-2***  
+The maximum relative difference on the loss between the iterations of learning.
+
+```python
+multiples_run(Runs, X, y_ann, max_iter=50, tolerance=1e-2)
+```
+Performs multiple runs of the neural network learning and save the best weights
+
+**Parameters** 
+* **Runs: *int***  
+The number of times the EM will be run to obtain different results.
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of the training data. 
+* **r_ann: *array-like of shape (n_samples, n_classes)***  
+Annotations of the data, should be on the global representation.
+* **max_iter: *int, default=50***  
+The maximum number of iterations to iterate between E and M.
+* **tolerance: *float, default=1e-2***  
+The maximum relative difference on the loss between the iterations of learning.
+
+**Returns**  
+* **found_loss: *list of length=Runs***  
+A list with the history of loss for each iteration in the different runs
+* **best_run: *int***  
+The index of the best run between all executed, a number between *0* and *Runs-1*.
+
+```python
+fit(X,Y, runs = 1, max_iter=50, tolerance=1e-2)
+```
+same operation than *multiples_run* function.
+
+```python
+get_global_confusionM(norm="softmax")
+```
+**Parameters** 
+* **norm: *string, {'softmax', ''}, default=''***  
+The normalize method used to obtain the global confusion matrices estimation. Empty string does not use a normalization step, 'softmax' use the softmax function.
+
+**Returns**  
+* **prob_Y_Zt: *array-like of shape (n_classes, n_classes)***  
+The estimation of global confusion matrix: <img src="https://render.githubusercontent.com/render/math?math=\hat{\beta}_{k,j}">.
+
+```python
+get_predictions(X)
+```
+**Parameters** 
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of some data. 
+
+**Returns**  
+* **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
+The probability predictions of the ground truth over some set <img src="https://render.githubusercontent.com/render/math?math=f_k(x) = \hat{p}(z=k|x)">
+
+```python
+get_predictions_global(X)
+```
+**Parameters** 
+* **X: *array-like of shape (n_samples, ...)***  
+Input patterns of some data. 
+
+**Returns**  
+* **prob_Y_xt: *array-like of shape (n_samples, n_classes)***  
+The probability estimation of labels over crowdsourcing scenario: <img src="https://render.githubusercontent.com/render/math?math=c_{j}(x)">.

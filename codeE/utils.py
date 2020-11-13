@@ -21,7 +21,6 @@ def generate_Individual_conf(Z_data, annotations, DTYPE_OP='float32'):
     return aux
 
 def generate_Global_conf(Z_data, annotations, DTYPE_OP='float32'):
-    """ This function calculate the confusion matrix amongs all the annotations for every data. """          
     if len(Z_data.shape) == 1:
         K = np.max(Z_data)+1
         Z_data = keras.utils.to_categorical(Z_data, num_classes=K)
@@ -67,14 +66,10 @@ def plot_confusion_keras(model,x,y,classes):
     conf_matrix = conf_matrix/conf_matrix.sum(axis=-1, keepdims=True)
     plot_confusion_matrix(conf_matrix,classes)
 
-def softmax(Xs):
-    """Compute softmax values for each sets of scores in x."""
-    values =[]
-    for x in Xs:
-        e_x = np.exp(x - np.max(x))
-        values.append(e_x / e_x.sum())
-    return np.asarray(values)
-
+def softmax(array, axis=-1):
+    e_x = np.exp(array - array.max(axis=axis, keepdims=True))
+    return e_x / e_x.sum(axis=axis, keepdims=True)
+    
 def calculate_JS_comp(conf_matrices, based="JS"):
     """ Calculate inertia of all the confusion conf_matrices"""
     if based.lower() == "js":

@@ -11,6 +11,7 @@ def LogisticRegression_Sklearn(epochs):
 
 import tensorflow as tf
 import keras
+import numpy as np
 from keras.models import Sequential,Model, clone_model
 from keras.layers import *
 from keras import backend as K
@@ -284,30 +285,137 @@ class Clonable_Model(object):
                 return_model.layers[n].set_weights( self.non_train_W[layer.name] )
         return_model.build(self.inp_shape)
         return return_model #return a copy of the mode
-    
-    
-class UnitSum(keras.constraints.Constraint):
-    """Constrains the weights incident to each hidden unit to have unit sum and non-negative.
-    # Arguments
-        axis: integer, axis along which to calculate weight norms.
-            For instance, in a `Dense` layer the weight matrix
-            has shape `(input_dim, output_dim)`,
-            set `axis` to `0` to constrain each weight vector
-            of length `(input_dim,)`.
-            In a `Conv2D` layer with `data_format="channels_last"`,
-            the weight tensor has shape
-            `(rows, cols, input_depth, output_depth)`,
-            set `axis` to `[0, 1, 2]`
-            to constrain the weights of each filter tensor of size
-            `(rows, cols, input_depth)`.
-    """
 
-    def __init__(self, axis=-1):
-        self.axis = axis
 
-    def __call__(self, w):
-        w = K.epsilon() + w * K.cast(K.greater_equal(w, 0.), K.floatx()) #non-negative
-        return w / K.sum(w, axis=self.axis, keepdims=True)
+def meta_init(array):
+    def aux_func(shape, dtype=None):
+        assert shape == array.shape
+        return array.astype(dtype)
+    return aux_func
+    
+from keras.engine.topology import Layer
+class CrowdsLayer(Layer):
+    def __init__(self, output_dim, num_annotators, conn_type="MW", conf_ma = 0, **kwargs):
+        super(CrowdsLayer, self).__init__(**kwargs)
+        self.output_dim = output_dim
+        self.num_annotators = num_annotators
+        self.conn_type = conn_type
+        self.conf_ma = conf_ma
+
+    def build(self, input_shape):
+        if self.conn_type == "MW":
+            # matrix of weights per annotator
+            self.kernel = self.add_weight("CrowdLayer", (input_shape[-1], self.output_dim, self.num_annotators),
+                                            initializer = meta_init(self.conf_ma), 
+                                            trainable=True)
+        elif self.conn_type == "VW+B":
+            # two vectors of weights (one scale and one bias per class) per annotator
+            self.kernel = []
+            self.kernel.append(self.add_weight("CrowdLayer", (self.output_dim, self.num_annotators),
+                                            initializer=keras.initializers.Ones(),
+                                            trainable=True))
+            self.kernel.append(self.add_weight("CrowdLayer", (self.output_dim, self.num_annotators),
+                                            initializer=keras.initializers.Zeros(),
+                                            trainable=True))
+        elif self.conn_type == "SW":
+            # single weight value per annotator
+            self.kernel = self.add_weight("CrowdLayer", (self.num_annotators,1),
+                                            initializer=keras.initializers.Ones(),
+                                            trainable=True)
+        super(CrowdsLayer, self).build(input_shape)  # Be sure to call this somewhere!
+
+    def call(self, x):            
+        if self.conn_type == "MW":
+            res = tf.tensordot(x, self.kernel, axes=[[-1], [0]]) #like a matrix dot
+        elif  self.conn_type == "VW+B" or self.conn_type == "SW":
+            out = []
+            for r in range(self.num_annotators):
+                if self.conn_type == "VW+B":
+                    out.append(x * self.kernel[0][:,r] + self.kernel[1][:,r])
+                elif self.conn_type == "SW":
+                    out.append(x * self.kernel[r,0])
+            res = tf.stack(out)
+            if len(res.shape) == 3:
+                res = tf.transpose(res, [1, 2, 0])
+            elif len(res.shape) == 4:
+                res = tf.transpose(res, [1, 2, 3, 0])
+        return tf.nn.softmax(res, axis=1) 
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], self.output_dim, self.num_annotators)
 
     def get_config(self):
-        return {'axis': self.axis}
+        config = {
+            'output_dim': self.output_dim,
+            'num_annotators': self.num_annotators,
+            'conn_type': self.conn_type,
+            'conf_ma': self.conf_ma
+        }
+        base_config = super(CrowdsLayer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+class MaskedMultiCrossEntropy(object):
+    def loss(self, y_true, y_pred):
+        vec = -tf.reduce_sum(y_true * tf.log(y_pred), axis = 1)
+        mask = tf.equal(y_true[:,0,:], -1) 
+        zer = tf.zeros_like(vec)
+        loss = K.sum( tf.where(mask, x=zer, y=vec), axis=-1) #sum annotators
+        return loss
+
+    def new_loss(self, y_true, y_pred):
+        y_pred = K.clip(y_pred, K.epsilon(), 1)
+        y_true = K.clip(y_true, 0, 1) #transform -1 to 0
+        vec = -tf.reduce_sum(y_true * tf.log(y_pred), axis = 1)
+        return K.sum(vec, axis= -1) #sum over annotators
+
+    def KL_loss(self, y_true, p_z):
+        mask  = K.cast(K.not_equal(y_true, -1), K.floatx())
+        r_obs = K.sum(y_true*mask, axis=-1)
+        T_i   = K.sum(r_obs, axis=-1, keepdims=True)
+        mv = r_obs/T_i # on batch size.. (all annotators) 
+       
+        #KL CALCULATION
+        p_z_clip = K.clip(p_z, K.epsilon(), 1)
+        mv = K.clip(mv, K.epsilon(), 1)
+        KL_mv = K.sum(p_z_clip* K.log(p_z_clip/mv), axis=-1) 
+        #similar a VAE sobre imagenes, KL en la practica (implementancion) pesa lo mismo que un pixel
+        #KL pesa lo mismo que UNA anotadora de las que etiquetaron
+        # OJO, para evitar el tamaño de imagen o la cantidad de anotadoras, el lambda dependera del problema.
+        return KL_mv #T_i*KL_mv  
+
+    def loss_w_prior(self, l=1, p_z=None):
+        def loss(y_true, y_pred):
+            loss_masked = self.new_loss(y_true, y_pred)
+            KL_mv = 0
+            if l != 0 and type(p_z) != type(None):
+                KL_mv = self.KL_loss(y_true, p_z)
+
+            return loss_masked + l* KL_mv 
+        return loss
+
+class NoiseLayer(Layer):
+    def __init__(self, units, conf_ma=0, **kwargs):
+        super(NoiseLayer, self).__init__(**kwargs)
+        self.units = units
+        self.conf_ma = conf_ma
+
+    def build(self, input_shape):
+        self.kernel = self.add_weight("NoiseChannel", (input_shape[-1], self.units),
+                                            initializer = meta_init(self.conf_ma), 
+                                            trainable=True)
+        super(NoiseLayer, self).build(input_shape)
+
+    def call(self, x, mask=None):
+        channel_matrix = tf.nn.softmax(self.kernel, axis=-1)
+        return tf.tensordot(x, channel_matrix, axes=[[-1], [0]]) #like a matrix dot 
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], self.units)
+
+    def get_config(self):
+        config = { 
+            'units': self.units,
+            'conf_ma': self.conf_ma
+            }
+        base_config = super(NoiseLayer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))

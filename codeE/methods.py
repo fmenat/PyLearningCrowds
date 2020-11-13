@@ -4,6 +4,7 @@ from .learning_models import LogisticRegression_Sklearn,LogisticRegression_Keras
 from .learning_models import default_CNN,default_RNN,CNN_simple, RNN_simple, default_CNN_text, default_RNN_text, Clonable_Model #deep learning
 from .representation import *
 from .utils import estimate_batch_size, EarlyStopRelative, pre_init_F, clusterize_annotators
+from .utils import generate_Individual_conf, generate_Global_conf, softmax
 
 class LabelAgg(object): #no predictive model
     def __init__(self, scenario="global", sparse=False): 
@@ -34,6 +35,9 @@ class LabelAgg(object): #no predictive model
             else: #dense
                 if len(labels.shape) ==3:
                     y_obs_categorical = labels.astype('float32')
+                    if y_obs_categorical.min() == -1: #masked representation
+                        y_obs_categorical[y_obs_categorical == -1] = 0
+                        y_obs_categorical = y_obs_categorical.transpose([0,2,1])
                 else:
                     y_obs_categorical = set_representation(labels,'onehot').astype('float32')                
 
@@ -296,6 +300,7 @@ class Super_ModelInf(Super_LabelInf):
     def __init__(self, init_Z='softmv', n_init_Z= 0, priors=0, DTYPE_OP='float32'):
         super().__init__(init_Z, priors, DTYPE_OP)
         self.init_Z = init_Z.lower()
+        self.n_init_Z = n_init_Z
 
     def get_basemodel(self):
         return self.base_model
@@ -334,6 +339,13 @@ class Super_ModelInf(Super_LabelInf):
             self.base_model.fit(inputs, targets, batch_size=self.batch_size, epochs=self.epochs, verbose=0) 
         elif self.base_model_lib =="sklearn":
             self.base_model.fit(inputs, targets.argmax(axis=-1)) #sklearn fit over hard estimation
+
+    def get_obj_clone(self, model_to_clone):
+        if type(model_to_clone.layers[0]) == keras.layers.InputLayer:
+            return Clonable_Model(model_to_clone) #architecture to clone
+        else:
+            it = keras.layers.Input(shape=model_to_clone.input_shape[1:])
+            return Clonable_Model(model_to_clone, input_tensors=it) #architecture to clon
 
 
 class ModelInf_EM(Super_ModelInf):
@@ -432,8 +444,7 @@ class ModelInf_EM(Super_ModelInf):
         return logL
             
     def stable_train(self,X,y_ann,max_iter=50,tolerance=3e-2):
-        logL_hist = self.train(X,y_ann,max_iter=max_iter,tolerance=tolerance)
-        return logL_hist
+        return self.train(X,y_ann,max_iter=max_iter,tolerance=tolerance)
     
     def multiples_run(self,Runs,X,y_ann,max_iter=50,tolerance=3e-2):  #tolerance can change
         if Runs==1:
@@ -443,15 +454,11 @@ class ModelInf_EM(Super_ModelInf):
         found_model = []
         found_logL = []
         iter_conv = []
-        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
-            obj_clone = Clonable_Model(self.base_model) #architecture to clone
-        else:
-            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
-            obj_clone = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
-
+        obj_clone = self.get_obj_clone(self.base_model)
+        loss_obj = self.base_model.loss
         for run in range(Runs):
-            self.base_model = obj_clone.get_model() #reset-weigths            
-            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            self.base_model = obj_clone.get_model() #reset-weigths      
+            self.base_model.compile(loss=loss_obj, optimizer=self.optimizer)
 
             logL_hist = self.train(X,y_ann,max_iter=max_iter,tolerance=tolerance) 
             found_betas.append(self.betas.copy())
@@ -464,9 +471,8 @@ class ModelInf_EM(Super_ModelInf):
             keras.backend.clear_session()
             gc.collect()
         #setup the configuration with maximum log-likelihood
-        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        logL_iter = np.asarray([a[-1] for a in found_logL])
         indexs_sort = np.argsort(logL_iter)[::-1] 
-        
         self.betas = found_betas[indexs_sort[0]].copy()
         self.base_model = obj_clone.get_model() #change
         self.base_model.set_weights(found_model[indexs_sort[0]])
@@ -609,8 +615,7 @@ class ModelInf_EM_CMM(Super_ModelInf):
         return np.asarray(logL)
     
     def stable_train(self,X,r_ann,max_iter=50,tolerance=3e-2):
-        logL_hist = self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance)
-        return logL_hist
+        return self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance)
     
     def multiples_run(self,Runs,X,r_ann,max_iter=50,tolerance=3e-2): 
         if Runs==1:
@@ -621,16 +626,11 @@ class ModelInf_EM_CMM(Super_ModelInf):
         found_model = [] 
         found_logL = []
         iter_conv = []
-
-        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
-            obj_clone = Clonable_Model(self.base_model) #architecture to clone
-        else:
-            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
-            obj_clone = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
-
+        obj_clone = self.get_obj_clone(self.base_model)
+        loss_obj = self.base_model.loss
         for run in range(Runs):
             self.base_model = obj_clone.get_model() #reset-weigths
-            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            self.base_model.compile(loss=loss_obj, optimizer=self.optimizer)
 
             logL_hist = self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance)
             
@@ -645,9 +645,8 @@ class ModelInf_EM_CMM(Super_ModelInf):
             keras.backend.clear_session()
             gc.collect()
         #setup the configuration with maximum log-likelihood
-        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        logL_iter = np.asarray([a[-1] for a in found_logL])
         indexs_sort = np.argsort(logL_iter)[::-1] 
-        
         self.betas = found_betas[indexs_sort[0]].copy()
         self.alphas = found_alphas[indexs_sort[0]].copy()
         self.base_model = obj_clone.get_model() #change
@@ -849,7 +848,7 @@ class ModelInf_EM_CMOA(Super_ModelInf):
 
     def compute_logL(self):
         logL_priors = np.sum(self.Mpriors* np.log(self.betas+ self.Keps))
-        return np.sum( np.log(self.aux_for_like+self.Keps) )  #safe logarithm
+        return np.sum( np.log(self.aux_for_like+self.Keps) ) + logL_priors
                                                   
     def train(self, X_train, y_ann_var, A_idx_var, max_iter=50, tolerance=3e-2):
         if not self.compile_z:
@@ -889,8 +888,7 @@ class ModelInf_EM_CMOA(Super_ModelInf):
         return np.asarray(logL)
     
     def stable_train(self, X, y_ann_var, A_idx_var, max_iter=50,tolerance=3e-2):
-        logL_hist = self.train(X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance)
-        return logL_hist
+        return self.train(X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance)
     
     def multiples_run(self,Runs,X, y_ann_var, A_idx_var, max_iter=50,tolerance=3e-2): 
         if Runs==1:
@@ -901,24 +899,16 @@ class ModelInf_EM_CMOA(Super_ModelInf):
         found_model_z = []
         found_logL = []
         iter_conv = []
-        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
-            obj_clone_z = Clonable_Model(self.base_model) #architecture to clone
-        else:
-            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
-            obj_clone_z = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
-
-        if type(self.group_model.layers[0]) == keras.layers.InputLayer:
-            obj_clone_g = Clonable_Model(self.group_model) #architecture to clone
-        else:
-            it = keras.layers.Input(shape=self.group_model.input_shape[1:])
-            obj_clone_g = Clonable_Model(self.group_model, input_tensors=it) #architecture to clon
-
+        obj_clone_z = self.get_obj_clone(self.base_model)
+        loss_obj_z = self.base_model.loss
+        obj_clone_g = self.get_obj_clone(self.group_model)
+        loss_obj_g = self.group_model.loss
         for run in range(Runs):
             self.base_model = obj_clone_z.get_model() #reset-weigths
-            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            self.base_model.compile(loss=loss_obj_z, optimizer=self.optimizer)
             
             self.group_model = obj_clone_g.get_model() #reset-weigths
-            self.group_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            self.group_model.compile(loss=loss_obj_g, optimizer=self.optimizer)
 
             logL_hist = self.train(X, y_ann_var, A_idx_var, max_iter=max_iter,tolerance=tolerance)
             
@@ -932,10 +922,8 @@ class ModelInf_EM_CMOA(Super_ModelInf):
             del self.base_model, self.group_model
             keras.backend.clear_session()
             gc.collect()
-        #setup the configuration with maximum log-likelihood
-        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        logL_iter = np.asarray([a[-1] for a in found_logL])
         indexs_sort = np.argsort(logL_iter)[::-1] 
-        
         self.betas = found_betas[indexs_sort[0]].copy()
         self.base_model = obj_clone_z.get_model()
         self.base_model.set_weights(found_model_z[indexs_sort[0]])
@@ -962,7 +950,6 @@ class ModelInf_EM_CMOA(Super_ModelInf):
         else:
             prob_Z_ik = self.get_predictions_z(X)
         return np.tensordot(prob_Z_ik ,self.betas,axes=[[1],[1]] ) #sum_z p(z|xi) * p(yo|z,g)
-
 
 
 class ModelInf_EM_G(Super_ModelInf): 
@@ -1062,8 +1049,7 @@ class ModelInf_EM_G(Super_ModelInf):
         return np.asarray(logL)
     
     def stable_train(self,X,r_ann,max_iter=50,tolerance=3e-2):
-        logL_hist = self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance)
-        return logL_hist
+        return self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance)
     
     def multiples_run(self,Runs,X,r_ann,max_iter=50,tolerance=3e-2): 
         if Runs==1:
@@ -1073,16 +1059,11 @@ class ModelInf_EM_G(Super_ModelInf):
         found_model = [] #quizas guardar pesos del modelo
         found_logL = []
         iter_conv = []
-
-        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
-            obj_clone = Clonable_Model(self.base_model) #architecture to clone
-        else:
-            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
-            obj_clone = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
-
+        obj_clone = self.get_obj_clone(self.base_model)
+        loss_obj = self.base_model.loss
         for run in range(Runs):
             self.base_model = obj_clone.get_model() #reset-weigths
-            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            self.base_model.compile(loss=loss_obj, optimizer=self.optimizer)
 
             logL_hist = self.train(X,r_ann,max_iter=max_iter,tolerance=tolerance) #here the models get resets
             
@@ -1095,10 +1076,8 @@ class ModelInf_EM_G(Super_ModelInf):
             del self.base_model
             keras.backend.clear_session()
             gc.collect()
-        #setup the configuration with maximum log-likelihood
-        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        logL_iter = np.asarray([a[-1] for a in found_logL])
         indexs_sort = np.argsort(logL_iter)[::-1] 
-        
         self.beta = found_betas[indexs_sort[0]].copy()
         self.base_model = obj_clone.get_model() #change
         self.base_model.set_weights(found_model[indexs_sort[0]])
@@ -1227,15 +1206,11 @@ class ModelInf_EM_R(Super_ModelInf):
         found_model = []
         found_logL = []
         iter_conv = []
-        if type(self.base_model.layers[0]) == keras.layers.InputLayer:
-            obj_clone = Clonable_Model(self.base_model) #architecture to clone
-        else:
-            it = keras.layers.Input(shape=self.base_model.input_shape[1:])
-            obj_clone = Clonable_Model(self.base_model, input_tensors=it) #architecture to clon
-
+        obj_clone = self.get_obj_clone(self.base_model)
+        loss_obj = self.base_model.loss
         for run in range(Runs):
             self.base_model = obj_clone.get_model() #reset-weigths            
-            self.base_model.compile(loss='categorical_crossentropy',optimizer=self.optimizer)
+            self.base_model.compile(loss=loss_obj, optimizer=self.optimizer)
 
             logL_hist = self.train(X,y_ann,max_iter=max_iter,tolerance=tolerance) 
             found_betas.append(self.b.copy())
@@ -1247,10 +1222,8 @@ class ModelInf_EM_R(Super_ModelInf):
             del self.base_model
             keras.backend.clear_session()
             gc.collect()
-        #setup the configuration with maximum log-likelihood
-        logL_iter = np.asarray([np.max(a) for a in found_logL])
+        logL_iter = np.asarray([a[-1] for a in found_logL])
         indexs_sort = np.argsort(logL_iter)[::-1] 
-        
         self.b = found_betas[indexs_sort[0]].copy()
         self.base_model = obj_clone.get_model() #change
         self.base_model.set_weights(found_model[indexs_sort[0]])
@@ -1263,3 +1236,235 @@ class ModelInf_EM_R(Super_ModelInf):
     
     def get_ann_rel(self):
         return self.get_b()
+
+from .learning_models import MaskedMultiCrossEntropy, CrowdsLayer, NoiseLayer
+class ModelInf_BP(Super_ModelInf):
+    def __init__(self, init_Z='softmv', n_init_Z= 0, prior_lamb=0, init_conf = "default"):
+        super().__init__(init_Z=init_Z, n_init_Z=n_init_Z)
+        self.compile=False  
+        self.init_C = init_conf
+        self.lamb = prior_lamb
+
+    def get_confusionM(self):
+        """Get confusion matrices of every annotator p(yo^t|,z)"""  
+        return self.betas.copy()
+
+    def set_crowdL_model(self, set_w = False, weights=0):
+        if not set_w:
+            weights = self.get_confusionM().transpose([1,2,0])
+        x = self.base_model.inputs
+        p_zx = self.base_model(x)
+        crowd_layer = CrowdsLayer(self.K, self.T, conn_type="MW", conf_ma=weights, name='CrowdL') ## ADD CROWDLAYER 
+        self.model_crowdL = keras.models.Model(x, crowd_layer(p_zx)) 
+        self.model_crowdL.compile(optimizer=self.optimizer, loss= MaskedMultiCrossEntropy().loss_w_prior(l=self.lamb, p_z=p_zx) )
+
+    def init_model(self, X, y_ann, method=""):
+        print("Initializing...")
+        if y_ann.min() == -1:
+            self.N, self.K, self.T = y_ann.shape
+        else:
+            self.N, self.T, self.K = y_ann.shape
+
+        if self.n_init_Z!= 0 and self.base_model_lib == "keras":
+            if method == "":
+                method = self.init_Z
+            label_A = LabelAgg(scenario="individual")
+            init_GT = label_A.infer(y_ann, method=method, onehot=True) 
+            pre_init_F(self.base_model, X, init_GT, self.n_init_Z, batch_size=self.batch_size, reset_optimizer=False)
+
+        if self.init_C == "model" and self.n_init_Z!= 0:
+            Z_pred = self.get_predictions(X).argmax(axis=-1) #could be soft
+            weights = generate_Individual_conf(Z_pred, y_ann)
+            weights = weights.transpose([1,2,0])
+            weights = np.log(weights + 1e-7)
+        elif self.init_C == "soft": #simi to default
+            NOISE_LEVEL = 0.15
+            weights = 0.01 * np.random.random((self.K, self.K, self.T)) 
+            weights += NOISE_LEVEL / (self.K - 1.)
+            for r in range(self.T):
+                for i in range(self.K):
+                    weights[i,i, r] = 1. - NOISE_LEVEL
+        else: # default
+            weights = np.zeros((self.K, self.K, self.T))
+            for r in range(self.T):
+                for i in range(self.K):
+                    weights[i,i,r] = 1.0  #identities
+        self.set_crowdL_model(set_w = True, weights= weights)
+        self.init_done=True 
+    
+    def train(self, X_train, y_ann, max_iter=50,tolerance=1e-2):   
+        if not self.compile:
+            print("You need to create the model first, set .define_model")
+            return
+        if not self.init_done:
+            self.init_model(X_train, y_ann) #add crowdlayer for auxiliar training
+        
+        if y_ann.min() != -1:
+            y_ann = y_ann.transpose([0,2,1]) #to Crowdlayer shape
+        ourCallback = EarlyStopRelative(monitor='loss', patience=1, min_delta=tolerance)
+        hist = self.model_crowdL.fit(X_train, y_ann, epochs=max_iter, batch_size=self.batch_size, 
+                                    verbose=1,callbacks=[ourCallback])
+        self.base_model = self.model_crowdL.get_layer("base_model_z")
+        self.betas = self.model_crowdL.get_layer("CrowdL").get_weights()[0].transpose([2,0,1]) #witohut bias
+        print("Finished training")
+        return hist.history["loss"]
+            
+    def stable_train(self,X,y_ann, max_iter=50, tolerance=1e-2):
+        return self.train(X, y_ann,max_iter=max_iter,tolerance=tolerance)
+    
+    def multiples_run(self,Runs,X,y_ann,max_iter=50,tolerance=1e-2):
+        if Runs==1:
+            return self.stable_train(X,y_ann,max_iter=max_iter,tolerance=tolerance), 0
+     
+        found_model = []
+        found_loss = []
+        found_betas = []
+        obj_clone = self.get_obj_clone(self.base_model)
+        for run in range(Runs):
+            self.base_model = obj_clone.get_model() 
+
+            loss_hist = self.train(X, y_ann, max_iter=max_iter, tolerance=tolerance) 
+            found_model.append(self.model_crowdL.get_layer("base_model_z").get_weights()) 
+            found_betas.append(self.model_crowdL.get_layer("CrowdL").get_weights()[0].transpose([2,0,1]) )
+            found_loss.append(loss_hist)
+            
+            self.init_done = False #multiples runs over different inits
+            del self.model_crowdL, self.base_model
+            keras.backend.clear_session()
+            gc.collect()
+        Loss_iter = np.asarray([a[-1] for a in found_loss])
+        indexs_sort = np.argsort(Loss_iter) #minimum
+        self.betas = found_betas[indexs_sort[0]].copy() 
+        self.base_model =  obj_clone.get_model()
+        self.base_model.set_weights(found_model[indexs_sort[0]])
+        print(Runs,"runs over Rodrigues 18', Epochs to converge= ",np.mean([len(v) for v in found_loss]))
+        return found_loss, indexs_sort[0]
+
+    def fit(self,X,Y, runs = 1, max_iter=50, tolerance=1e-2):
+        return self.multiples_run(runs,X,Y,max_iter=max_iter,tolerance=tolerance)
+        
+    def get_ann_confusionM(self, norm=""):
+        confs = self.get_confusionM()
+        if norm == "softmax":
+            confs = softmax(confs, axis=-1)
+        elif norm == "0-1" or norm=="01":
+            confs += np.abs(confs.min(axis=-1, keepdims=True))
+            confs = confs / confs.max(axis=-1, keepdims=True)
+        return confs
+        
+    def get_predictions_annot(self, X):
+        """ Predictions of all annotators , p(y^o | xi, t) """
+        try:
+            self.model_crowdL
+        except:
+            self.set_crowdL_model()
+        return self.model_crowdL.predict(X).transpose([0,2,1]) 
+
+
+class ModelInf_BP_G(Super_ModelInf):
+    def __init__(self, init_Z='softmv', n_init_Z= 0, prior_lamb=0, init_conf= "default"):
+        super().__init__(init_Z=init_Z, n_init_Z=n_init_Z)
+        self.compile = False  
+        self.init_C = init_conf
+
+        self.lamb = prior_lamb #incluir algo al respecto???
+
+    def get_confusionM(self):
+        """Get confusion matrices of global annotations p(y|z)"""  
+        return self.beta.copy()
+
+    def set_crowdL_model(self, set_w = False, weights=0):
+        if not set_w:
+            weights = self.get_confusionM()
+        x = self.base_model.inputs
+        p_zx = self.base_model(x)
+        noise_channel = NoiseLayer(self.K, conf_ma=weights, name="NoiseC")
+        self.model_crowdL = keras.models.Model(x, noise_channel(p_zx)) 
+        self.model_crowdL.compile(optimizer=self.optimizer, loss='categorical_crossentropy')
+
+    def init_model(self, X, r_ann, method=""):
+        print("Initializing...")
+        self.N, self.K = r_ann.shape
+
+        if self.n_init_Z!= 0:
+            if method == "":
+                method = self.init_Z
+            label_A = LabelAgg(scenario="global")
+            init_GT = label_A.infer(r_ann, method=method, onehot=True) 
+            pre_init_F(self.base_model, X, init_GT, self.n_init_Z, batch_size=self.batch_size, reset_optimizer=False)
+
+        if self.init_C == "model" and self.n_init_Z!= 0:
+            Z_pred = self.get_predictions(X).argmax(axis=-1) #could be soft
+            weights = generate_Global_conf(Z_pred, r_ann)
+        else: #default
+            NOISE_LEVEL = 0.15
+            weights = 0.01 * np.random.random((self.K, self.K))  #
+            weights += NOISE_LEVEL / (self.K - 1.)
+            for i in range(self.K):
+                weights[i,i] = 1. - NOISE_LEVEL
+        weights = np.log(weights + self.Keps)
+        self.set_crowdL_model(set_w = True, weights= weights)
+        self.init_done=True 
+    
+    def train(self, X_train, r_ann, max_iter=50,tolerance=1e-2):   
+        if not self.compile:
+            print("You need to create the model first, set .define_model")
+            return
+        if not self.init_done:
+            self.init_model(X_train, r_ann) #add crowdlayer for auxiliar training
+
+        ourCallback = EarlyStopRelative(monitor='loss', patience=1, min_delta=tolerance)
+        hist = self.model_crowdL.fit(X_train, r_ann, epochs=max_iter, batch_size=self.batch_size, 
+                                    verbose=1,callbacks=[ourCallback])
+        self.base_model = self.model_crowdL.get_layer("base_model_z")
+        self.beta = self.model_crowdL.get_layer("NoiseC").get_weights()[0] 
+        print("Finished training")
+        return hist.history["loss"]
+            
+    def stable_train(self,X,r_ann, max_iter=50, tolerance=1e-2):
+        return self.train(X, r_ann,max_iter=max_iter,tolerance=tolerance)
+    
+    def multiples_run(self,Runs,X,r_ann,max_iter=50,tolerance=1e-2):
+        if Runs==1:
+            return self.stable_train(X,r_ann,max_iter=max_iter,tolerance=tolerance), 0
+     
+        found_betas = []
+        found_model = []
+        found_loss = []
+        obj_clone = self.get_obj_clone(self.base_model)
+        for run in range(Runs):
+            self.base_model = obj_clone.get_model() 
+
+            loss_hist = self.train(X, r_ann, max_iter=max_iter, tolerance=tolerance) 
+            found_model.append(self.model_crowdL.get_layer("base_model_z").get_weights()) 
+            found_betas.append(self.model_crowdL.get_layer("NoiseC").get_weights()[0] )
+            found_loss.append(loss_hist)
+            
+            self.init_done = False #multiples runs over different inits
+            del self.model_crowdL, self.base_model
+            keras.backend.clear_session()
+            gc.collect()
+        Loss_iter = np.asarray([a[-1] for a in found_loss]) 
+        indexs_sort = np.argsort(Loss_iter)
+        self.beta = found_betas[indexs_sort[0]].copy() 
+        self.base_model =  obj_clone.get_model()
+        self.base_model.set_weights(found_model[indexs_sort[0]])
+        print(Runs,"runs, Epochs to converge= ",np.mean([len(v) for v in found_loss]))
+        return found_loss, indexs_sort[0]
+
+    def fit(self,X,Y, runs = 1, max_iter=50, tolerance=1e-2):
+        return self.multiples_run(runs,X,Y,max_iter=max_iter,tolerance=tolerance)
+        
+    def get_global_confusionM(self, norm="softmax"): #softmax was the original idea 
+        confs = self.get_confusionM()
+        if norm == "softmax":
+            confs = softmax(confs, axis=-1)
+        return confs
+
+    def get_predictions_global(self, X):
+        """ Predictions of global annotators , p(y^o | xi) """
+        try:
+            self.model_crowdL
+        except:
+            self.set_crowdL_model()
+        return self.model_crowdL.predict(X) 
