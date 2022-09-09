@@ -1,5 +1,5 @@
 # PyLearningCrowds
-<img src="https://marketingland.com/wp-content/ml-loads/2016/01/DataPeople_1200.png" width="50%" />
+<img src="imgs/Learning_from_crowds_final-1.jpg" width="50%" />
 
 Learning from crowds methods implemented in Python. The available methods:
 * **Majority Voting**: soft, hard, weighted
@@ -55,16 +55,16 @@ mv_hard = label_A.predict(r_obs, 'hardMV')
 ```
 > Read the dataset input patterns
 ```python
-X_train = ... 
+X_train = ...
 ```
 > Define a predictive model over the ground truth
 ```python
-fz_x = ... 
+fz_x = ...
 ```
 >> You can infer a predictive model with the ground truth
 ```python
 from codeE.representation import set_representation
-y_obs_categorical = set_representation(y_obs,'onehot') 
+y_obs_categorical = set_representation(y_obs,'onehot')
 print("Individual representation shape (N,T,K)= ",y_obs_categorical.shape)
 from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar()
@@ -76,7 +76,7 @@ raykar_fx.predict(new_X)
 >> You can infer the predictive model and groups of behaviors
 ```python
 from codeE.methods import ModelInf_EM_CMM as CMM
-CMM_model = CMM(M=3) 
+CMM_model = CMM(M=3)
 CMM_model.set_model(fz_x)
 CMM_model.fit(X_train, r_obs, runs =20)
 cmm_fx = CMM_model.get_basemodel()
@@ -88,10 +88,10 @@ cmm_fx.predict(new_X)
 ---
 
 ### Updates
-* Predictive model support Logistic Regression on sklearn 
-> Only with **one run** in the configuration of the methods. Example 
+* Predictive model support Logistic Regression on sklearn
+> Only with **one run** in the configuration of the methods. Example
 ```python
-from sklearn.linear_model import LogisticRegression as LR 
+from sklearn.linear_model import LogisticRegression as LR
 model_sklearn_A = LR(C= 1, multi_class="multinomial")
 from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar(init_Z="softmv")
@@ -109,7 +109,7 @@ fz_x = keras models
 ```python
 from codeE.methods import ModelInf_BP as Rodrigues18
 Ro_model = Rodrigues18()
-args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT}
 Ro_model.set_model(fz_x, **args)
 Ro_model.fit(X_train, y_obs_categorical, runs=10)
 learned_fz_x = Ro_model.get_basemodel()
@@ -119,7 +119,7 @@ learned_fz_x = Ro_model.get_basemodel()
 ```python
 from codeE.methods import ModelInf_BP_G as G_Noise
 GNoise_model = G_Noise()
-args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT}
 GNoise_model.set_model(fz_x, **args)
 GNoise_model.fit(X_train, r_obs, runs=10)
 learned_fz_x = GNoise_model.get_basemodel()

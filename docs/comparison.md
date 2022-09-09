@@ -1,5 +1,5 @@
 ## Learning from Crowds Solutions
-<img src="https://miro.medium.com/max/1000/1*b5tn7FOeLUsJ-CqGlDGXyg.jpeg" width="50%" />
+<img src="../imgs/Learning_from_crowds_final-2.jpg" width="50%" />
 
 As this is an unsupervised problem of learning the *ground truth* based on the labeling process it can be solved with different approaches. Each method will try to model the annotation behavior in different ways and in different settings, providing different solutions for what is necessary.
 
@@ -33,7 +33,7 @@ Some notation comments:
 
 #### Comments
 * The inference of the methods with an explicit model per annotator depends on the participation of the annotators on the labelling process.
-	* Large number of annotations 
+	* Large number of annotations
 * An explicit model per annotator could take inference advantage when the individual behavior is quite different from each other.
 	* While more complex model will overfit to the desired behavior modeling.
 * The methods with predictive model could take inference advantage when the input patterns are more complex.

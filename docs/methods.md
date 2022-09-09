@@ -3,8 +3,7 @@
 from codeE.methods import ...
 ```
 State of the art methods proposed in the crowdsourcing scenario, also called *learning from crowds*.
-<img src="https://www.advancedsciencenews.com/wp-content/uploads/2018/10/widm1288-fig-0001.png" width="50%" />
-
+<img src="../imgs/Learning_from_crowds_final-2.jpg" width="50%" />
 
 To problem notation see the [documentation](notation.md)
 
@@ -30,7 +29,7 @@ class codeE.methods.LabelAgg(scenario="global")
 ```
 [UP](#crowdsourcing-methods)
 
-Methods that reduced the multiple annotations *y* to a single target for each input pattern *x*. The goal is to define a ground truth *z* as a function of the annotations, for example summary statistic such as the mean, the median or the mode. 
+Methods that reduced the multiple annotations *y* to a single target for each input pattern *x*. The goal is to define a ground truth *z* as a function of the annotations, for example summary statistic such as the mean, the median or the mode.
 
 The most used and simple technique corresponds to Majority Voting (MV) [1], which can handle both scenario setting, individual or global.
 > It can handle both representation: *individual* and *dense* (for further details see [representation documentation](representation.md))
@@ -50,7 +49,7 @@ The scenario in which the annotations will be aggregated. Subject to the represe
 ... #read some data
 from codeE.representation import set_representation
 y_obs_categorical = set_representation(y_obs,'onehot')
-y_cat_var, _ = set_representation(y_obs,"onehotvar") 
+y_cat_var, _ = set_representation(y_obs,"onehotvar")
 r_obs = set_representation(y_obs,"global")
 ```
 > Infer over global scenario
@@ -168,7 +167,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ```python
 ... #read some data
 from codeE.representation import set_representation
-y_obs_categorical = set_representation(y_obs,'onehot') 
+y_obs_categorical = set_representation(y_obs,'onehot')
 ```
 > Train the model
 ```python
@@ -176,16 +175,16 @@ from codeE.methods import LabelInf_EM as DS
 DS_model = DS(init_Z='softmv')
 hist = DS_model.fit(y_obs_categorical)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import LabelInf_EM as DS
-DS_model = DS(init_Z='hardmv', priors=1, fast=True) 
+DS_model = DS(init_Z='hardmv', priors=1, fast=True)
 hist = DS_model.fit(y_obs_categorical)
 ```
 > Get estimation of the ground truth label on trainig set and ground truth marginal
 ```python
 print("p(z) =", DS_model.get_marginalZ())
-ds_labels = DS_model.infer() 
+ds_labels = DS_model.infer()
 ```
 
 ##### Class Methods
@@ -337,7 +336,7 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	* *array-like of shape (n_groups, n_classes)*  
 	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
 	* *array-like of shape (n_groups, n_classes, n_classes)*  
-	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data.
 	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
@@ -346,7 +345,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
 r_obs = set_representation(y_obs, "global")
 ```
@@ -356,16 +355,16 @@ from codeE.methods import LabelInf_EM_G
 LI_G_model = LabelInf_EM_G(init_Z='softmv')
 hist = LI_G_model.fit(r_obs)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import LabelInf_EM as DS
-LI_G_model = LabelInf_EM_G(init_Z='hardmv', priors=1) 
+LI_G_model = LabelInf_EM_G(init_Z='hardmv', priors=1)
 hist = LI_G_model.fit(r_obs)
 ```
 > Get estimation of the ground truth label on trainig set and ground truth marginal
 ```python
 print("p(z) =", LI_G_model.get_marginalZ())
-g_labels = LI_G_model.infer() 
+g_labels = LI_G_model.infer()
 ```
 
 ##### Class Methods
@@ -426,7 +425,7 @@ Perform the inference on the E-step.
 
 **Parameters**  
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
-Annotations of the data, should be on the global representation. 
+Annotations of the data, should be on the global representation.
 
 ```python
 M_step(r_ann)
@@ -449,7 +448,7 @@ train(r_ann, max_iter=50, tolerance=3e-2)
 ```
 Perform all the inference based on EM algorithm.
 
-**Parameters** 
+**Parameters**
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -500,7 +499,7 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	* *array-like of shape (n_annotators, n_classes)*  
 	A matrix of the number of annotations to be set priors for every annotator and every ground truth label on the data.
 	* *array-like of shape (n_annotators, n_classes, n_classes)*  
-	A cube with the number of annotations to be set priors for every annotator, every ground truth label and every observed label on the data. 
+	A cube with the number of annotations to be set priors for every annotator, every ground truth label and every observed label on the data.
 	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
@@ -515,9 +514,9 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
-y_obs_categorical = set_representation(y_obs,'onehot') 
+y_obs_categorical = set_representation(y_obs,'onehot')
 ```
 > Define predictive model (based on keras)
 ```python
@@ -532,7 +531,7 @@ args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 R_model.set_model(F_model, **args)
 R_model.fit(X_train, y_obs_categorical)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import ModelInf_EM as Raykar
 R_model = Raykar(init_Z="softmv", priors='laplace')
@@ -656,9 +655,9 @@ train(X_train, y_ann, max_iter=50,tolerance=3e-2)
 ```
 Perform all the inference based on EM algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **max_iter: *int, default=50***  
@@ -671,11 +670,11 @@ multiples_run(Runs, X, y_ann, max_iter=50, tolerance=3e-2)
 ```
 Perform multiple runs of the EM algorithm and save the best execution based on log-likelihood.
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **max_iter: *int, default=50***  
@@ -704,9 +703,9 @@ The estimation of individual confusion matrix of each annotator: <img src="https
 ```python
 get_predictions(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -716,9 +715,9 @@ The probability predictions of the ground truth over some set <img src="https://
 ```python
 get_predictions_annot(X, data=[])
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 * **data: *array-like of shape (n_samples, n_classes)***  
 If the probability predictions of the ground truth over some set are delivered
 
@@ -742,7 +741,7 @@ The original CMM (*Crowd Mixture Model*) method was proposed by Mena et al. [1].
 **Parameters**  
 * **M: *int***  
 The number of groups (*n_groups*) to be found (*different types of behaviors*) in the annotations.
-	* If *M=1* returns a [*ModelInf_EM_G*](#model-inference-based-on-em---label-noise) instance, (with a global confusion matrix). 
+	* If *M=1* returns a [*ModelInf_EM_G*](#model-inference-based-on-em---label-noise) instance, (with a global confusion matrix).
 * **init_Z: *string, {'softmv','hardmv','model'}, default='softmv'***  
 The method used to initialize the ground truth probabilities on the EM step: <img src="https://render.githubusercontent.com/render/math?math=p(z=k|i)">. The *softmv* and *hardmv* posibilities are based on [LabelAgg class](#simple-aggregation-techniques). The *model* refers to train the predictive model over *hardmv* for *n_init_Z* epochs and use the predictions of it to initialize *ground truth*.
 * **n_init_Z: *int, default=0***  
@@ -758,7 +757,7 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	* *array-like of shape (n_groups, n_classes)*  
 	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
 	* *array-like of shape (n_groups, n_classes, n_classes)*  
-	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data.
 	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
@@ -771,7 +770,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
 r_obs = set_representation(y_obs, "global")
 ```
@@ -788,10 +787,10 @@ args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMM_model.set_model(F_model, **args)
 CMM_model.fit(X_train, r_obs)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import ModelInf_EM_CMM as CMM
-CMM_model = CMM(M=3, init_Z='model', n_init_Z=3, priors=0) 
+CMM_model = CMM(M=3, init_Z='model', n_init_Z=3, priors=0)
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMM_model.set_model(F_model, **args)
 CMM_model.fit(X_train, r_obs, runs=20)
@@ -884,7 +883,7 @@ set_priors(priors)
 init_E(X, r_ann, method="")
 ```
 Initialization of the E-step, based on the following approximation:
-<img src="https://render.githubusercontent.com/render/math?math=q_{ij}(g=m, z=k) = p(g=m, z=k | x_i, y=j) = p(g=m|x_i,y=j) p(z=k|x_i)">. 
+<img src="https://render.githubusercontent.com/render/math?math=q_{ij}(g=m, z=k) = p(g=m, z=k | x_i, y=j) = p(g=m|x_i,y=j) p(z=k|x_i)">.
 The groups *g* initialization is based on a K-means clustering and the ground truth *z* is based on *method*.
 
 **Parameters**  
@@ -927,9 +926,9 @@ train(X_train, r_ann, max_iter=50,tolerance=3e-2)
 ```
 Perform all the inference based on EM algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -942,11 +941,11 @@ multiples_run(Runs, X, r_ann, max_iter=50, tolerance=3e-2)
 ```
 Perform multiple runs of the EM algorithm and save the best execution based on log-likelihood.
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -968,9 +967,9 @@ same operation than *multiples_run* function.
 ```python
 get_predictions(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -986,9 +985,9 @@ The estimation of global confusion matrix <img src="https://render.githubusercon
 ```python
 get_ann_confusionM(X, Y)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 * **Y: *array-like of shape (n_samples, )***  
 Annotations of some specific annotator *t*, no label symbol *=-1*
 
@@ -1000,9 +999,9 @@ The estimation of individual confusion matrix of some annotator *t*: <img src="h
 get_predictions_groups(X, data=[])
 ```
 
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 * **data: *array-like of shape (n_samples, n_classes)***  
 If the probability predictions of the ground truth over some set are delivered
 
@@ -1046,7 +1045,7 @@ The priors to be set on the confusion matrices of groups, could be in different 
 	* *array-like of shape (n_groups, n_classes)*  
 	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
 	* *array-like of shape (n_groups, n_classes, n_classes)*  
-	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data.
 	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
@@ -1059,7 +1058,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
 y_cat_var, A_idx_var = set_representation(y_obs,"onehotvar")
 ```
@@ -1072,7 +1071,7 @@ F_model = Sequential()
 ```python
 T= np.concatenate(A_idx_var).max() +1
 group_model = Sequential()
-group_model.add(Embedding(T, 8, input_length=1, 
+group_model.add(Embedding(T, 8, input_length=1,
                          trainable=True,weights=[A_rep]))
 group_model.add(Reshape([K]))
 ... #add dense (feed forward) layers
@@ -1080,7 +1079,7 @@ group_model.add(Reshape([K]))
 > Set the model and train the method
 ```python
 from codeE.methods import ModelInf_EM_CMOA as CMOA
-CMOA_model = CMOA(M=3) 
+CMOA_model = CMOA(M=3)
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMOA_model.set_model(F_model, ann_model=group_model, **args)
 CMOA_model.fit(X_train, y_cat_var, A_idx_var)
@@ -1088,7 +1087,7 @@ CMOA_model.fit(X_train, y_cat_var, A_idx_var)
 > Train with different settings (**you must create the keras model again**)
 ```python
 from codeE.methods import ModelInf_EM_CMOA as CMOA
-CMOA_model = CMOA(M=3, init_Z='softmv', n_init_Z=0, n_init_G=0, priors=1) 
+CMOA_model = CMOA(M=3, init_Z='softmv', n_init_Z=0, n_init_G=0, priors=1)
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 CMOA_model.set_model(F_model, ann_model=group_model, **args)
 CMOA_model.fit(X_train, y_cat_var, A_idx_var, runs=20)
@@ -1195,7 +1194,7 @@ set_priors(priors)
 init_E(X, y_ann_var, A_idx_var, method="")
 ```
 Initialization of the E-step, based on the following approximation:
-<img src="https://render.githubusercontent.com/render/math?math=q_{i\ell}(g=m, z=k) = p(g=m, z=k | x_i, y_{i}^{(\ell)}, a_{i}^{(\ell)}) = p(g=m|a_i^{(\ell)}) p(z=k|x_i) ">. 
+<img src="https://render.githubusercontent.com/render/math?math=q_{i\ell}(g=m, z=k) = p(g=m, z=k | x_i, y_{i}^{(\ell)}, a_{i}^{(\ell)}) = p(g=m|a_i^{(\ell)}) p(z=k|x_i) ">.
 The groups *g* initialization is based on a K-means clustering and the ground truth *z* is based on *method*.
 
 **Parameters**  
@@ -1249,9 +1248,9 @@ train(X_train, y_ann_var, A_idx_var, max_iter=50,tolerance=3e-2)
 ```
 Perform all the inference based on EM algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann_var: *array-like of shape (n_samples,) of arrays of shape (n_annotations(i), n_classes)***  
 Annotations of the data, should be on a categorical representation of variable length, from only anotators that annotate the data.
 * **A_idx_var: *array-like of shape (n_samples,) of arrays of shape (n_annotations(i),)***  
@@ -1266,11 +1265,11 @@ multiples_run(Runs, X, y_ann_var, A_idx_var, max_iter=50, tolerance=3e-2)
 ```
 Perform multiple runs of the EM algorithm and save the best execution based on log-likelihood.
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann_var: *array-like of shape (n_samples,) of arrays of shape (n_annotations(i), n_classes)***  
 Annotations of the data, should be on a categorical representation of variable length, from only anotators that annotate the data.
 * **A_idx_var: *array-like of shape (n_samples,) of arrays of shape (n_annotations(i),)***  
@@ -1294,9 +1293,9 @@ same operation than *multiples_run* function.
 ```python
 get_predictions_z(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -1305,7 +1304,7 @@ The probability predictions of the ground truth over some set <img src="https://
 ```python
 get_predictions_g(A)
 ```
-**Parameters** 
+**Parameters**
 * **A: *array-like of shape (n_annotators_pred, 1)***  
 The identifier of *n_annotators_pred* annotators to assign groups.
 
@@ -1316,7 +1315,7 @@ The probability predictions over the groups of some annotators <img src="https:/
 ```python
 get_global_confusionM(prob_Gt)
 ```
-**Parameters** 
+**Parameters**
 * **prob_Gt: *array-like of shape (n_annotators, n_groups)***  
 Probabilities of the annotators over the groups.
 
@@ -1327,7 +1326,7 @@ The estimation of global confusion matrix <img src="https://render.githubusercon
 ```python
 get_ann_confusionM(A)
 ```
-**Parameters** 
+**Parameters**
 * **A: *array-like of shape (n_annotators_pred, 1)***  
 The identifier of *n_annotators_pred* annotators.
 
@@ -1339,9 +1338,9 @@ The estimation of individual confusion matrices of *n_annotators_pred* annotator
 get_predictions_groups(X, data=[])
 ```
 
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 * **data: *array-like of shape (n_samples, n_classes)***  
 If the probability predictions of the ground truth over some set are delivered
 
@@ -1379,7 +1378,7 @@ The priors to be set on the confusion matrices of annotators, could be in differ
 	* *array-like of shape (n_groups, n_classes)*  
 	A matrix of the number of annotations to be set priors for every group and every ground truth label on the data.
 	* *array-like of shape (n_groups, n_classes, n_classes)*  
-	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data. 
+	A cube with the number of annotations to be set priors for every group, every ground truth label and every observed label on the data.
 	> Comments on the priors: The laplace smooth prior helps to stabilize traning and speeds up convergence. The disadvantage trade-off correspond to a slightly worse estimation of the ground truth.
 * **DTYPE_OP: *string, default='float32'***  
 dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.html
@@ -1392,7 +1391,7 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
 r_obs = set_representation(y_obs, "global")
 ```
@@ -1404,15 +1403,15 @@ F_model = Sequential()
 > Set the model and train the method
 ```python
 from codeE.methods import ModelInf_EM_G as G_Noise
-GNoise_model = G_Noise() 
+GNoise_model = G_Noise()
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 GNoise_model.set_model(F_model, **args)
 GNoise_model.fit(X_train, r_obs)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import ModelInf_EM_G as G_Noise
-GNoise_model = G_Noise(init_Z='model', n_init_Z=3, priors=0) 
+GNoise_model = G_Noise(init_Z='model', n_init_Z=3, priors=0)
 args = {'epochs':1, 'batch_size':BATCH_SIZE, 'optimizer':OPT}
 GNoise_model.set_model(F_model, **args)
 GNoise_model.fit(X_train, r_obs, runs=20)
@@ -1466,7 +1465,7 @@ The estimation over auxiliar model *Q*
 ```python
 set_model(model, optimizer="adam", epochs=1, batch_size=32)
 ```
-Set the predictive model (base model) over the ground truth and define how to optimize it **on the M step** of the iterative EM algorithm. 
+Set the predictive model (base model) over the ground truth and define how to optimize it **on the M step** of the iterative EM algorithm.
 
 **Parameters**  
 * **model: *function or class of keras model***  
@@ -1530,9 +1529,9 @@ train(X_train, r_ann, max_iter=50, tolerance=3e-2)
 ```
 Perform all the inference based on EM algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -1545,11 +1544,11 @@ multiples_run(Runs,X,r_ann,max_iter=50,tolerance=3e-2)
 ```
 Perform multiple runs of the EM algorithm and save the best execution based on log-likelihood.
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -1571,9 +1570,9 @@ same operation than *multiples_run* function.
 ```python
 get_predictions(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -1590,9 +1589,9 @@ The estimation of global confusion matrix <img src="https://render.githubusercon
 get_predictions_global(X, data=[])
 ```
 
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 * **data: *array-like of shape (n_samples, n_classes)***  
 If the probability predictions of the ground truth over some set are delivered
 
@@ -1627,9 +1626,9 @@ dtype of numpy array, restricted to https://numpy.org/devdocs/user/basics.types.
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
-y_obs_categorical = set_representation(y_obs,'onehot') 
+y_obs_categorical = set_representation(y_obs,'onehot')
 ```
 > Define predictive model (based on keras)
 ```python
@@ -1644,7 +1643,7 @@ MA_model = MA_DL()
 MA_model.set_model(F_model, **args)
 MA_model.fit(X_train, y_obs_categorical)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import ModelInf_EM_R as MA_DL
 MA_model = MA_DL(init_R="softmv")
@@ -1759,9 +1758,9 @@ train(X_train, y_ann, max_iter=50,tolerance=3e-2)
 ```
 Perform all the inference based on EM algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **max_iter: *int, default=50***  
@@ -1774,11 +1773,11 @@ multiples_run(Runs, X, y_ann, max_iter=50, tolerance=3e-2)
 ```
 Perform multiple runs of the EM algorithm and save the best execution based on log-likelihood.
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **max_iter: *int, default=50***  
@@ -1808,9 +1807,9 @@ The estimation of the probabilistic reliability of each annotator: <img src="htt
 ```python
 get_predictions(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -1848,9 +1847,9 @@ The method used to initialize the confusion matrix weights inside the model <img
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
-y_obs_categorical = set_representation(y_obs,'onehot') 
+y_obs_categorical = set_representation(y_obs,'onehot')
 ```
 > Define predictive model (based on keras)
 ```python
@@ -1861,15 +1860,15 @@ F_model = Sequential()
 ```python
 from codeE.methods import ModelInf_BP as Rodrigues18
 Ro_model = Rodrigues18()
-args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT}
 Ro_model.set_model(F_model, **args)
 Ro_model.fit(X_train, y_obs_categorical)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import ModelInf_BP as Rodrigues18
 Ro_model = Rodrigues18(init_Z='softmv', n_init_Z=3, init_conf="model")
-args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT}
 Ro_model.set_model(F_model, **args)
 Ro_model.fit(X_train, y_obs_categorical, runs=10)
 ```
@@ -1951,9 +1950,9 @@ train(X_train, y_ann, max_iter=50,tolerance=1e-2)
 ```
 Perform the learning of the neural network weights based on backpropagation algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **max_iter: *int, default=50***  
@@ -1966,11 +1965,11 @@ multiples_run(Runs, X, y_ann, max_iter=50, tolerance=1e-2)
 ```
 Performs multiple runs of the neural network learning and save the best weights
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **y_ann: *array-like of shape (n_samples, n_annotators, n_classes)***  
 Annotations of the data, should be the individual one-hot (categorical) representation.
 * **max_iter: *int, default=50***  
@@ -1992,7 +1991,7 @@ same operation than *multiples_run* function.
 ```python
 get_ann_confusionM(norm="")
 ```
-**Parameters** 
+**Parameters**
 * **norm: *string, {'softmax', '01', ''}, default=''***  
 The normalize method used to obtain the individual confusion matrices estimation. Empty string does not use a normalization step, 'softmax' use the softmax function and '01' use a 0-1 range scaler as the proposed in [2].
 
@@ -2003,9 +2002,9 @@ The estimation of individual confusion matrix of each annotator: <img src="https
 ```python
 get_predictions(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -2014,9 +2013,9 @@ The probability predictions of the ground truth over some set <img src="https://
 ```python
 get_predictions_annot(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Y_xt: *array-like of shape (n_samples, n_annotators, n_classes)***  
@@ -2051,7 +2050,7 @@ The method used to initialize the confusion matrix weights inside the model <img
 ##### Examples
 ```python
 X_train = ...
-... #read some data 
+... #read some data
 from codeE.representation import set_representation
 r_obs = set_representation(y_obs,"global")
 ```
@@ -2064,15 +2063,15 @@ F_model = Sequential()
 ```python
 from codeE.methods import ModelInf_BP_G as G_Noise
 GNoise_model = G_Noise()
-args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT}
 GNoise_model.set_model(F_model, **args)
 GNoise_model.fit(X_train, r_obs)
 ```
-> Train with different settings 
+> Train with different settings
 ```python
 from codeE.methods import ModelInf_BP_G as G_Noise
 GNoise_model = G_Noise(init_Z='softmv', n_init_Z=3, init_conf="model")
-args = {'batch_size':BATCH_SIZE, 'optimizer':OPT} 
+args = {'batch_size':BATCH_SIZE, 'optimizer':OPT}
 GNoise_model.set_model(F_model, **args)
 GNoise_model.fit(X_train, r_obs, runs=10)
 ```
@@ -2155,9 +2154,9 @@ train(X_train, r_ann, max_iter=50,tolerance=1e-2)
 ```
 Perform the learning of the neural network weights based on backpropagation algorithm.
 
-**Parameters** 
+**Parameters**
 * **X_train: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -2170,11 +2169,11 @@ multiples_run(Runs, X, y_ann, max_iter=50, tolerance=1e-2)
 ```
 Performs multiple runs of the neural network learning and save the best weights
 
-**Parameters** 
+**Parameters**
 * **Runs: *int***  
 The number of times the EM will be run to obtain different results.
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of the training data. 
+Input patterns of the training data.
 * **r_ann: *array-like of shape (n_samples, n_classes)***  
 Annotations of the data, should be on the global representation.
 * **max_iter: *int, default=50***  
@@ -2196,7 +2195,7 @@ same operation than *multiples_run* function.
 ```python
 get_global_confusionM(norm="softmax")
 ```
-**Parameters** 
+**Parameters**
 * **norm: *string, {'softmax', ''}, default=''***  
 The normalize method used to obtain the global confusion matrices estimation. Empty string does not use a normalization step, 'softmax' use the softmax function.
 
@@ -2207,9 +2206,9 @@ The estimation of global confusion matrix: <img src="https://render.githubuserco
 ```python
 get_predictions(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Z_hat: *array-like of shape (n_samples, n_classes)***  
@@ -2218,9 +2217,9 @@ The probability predictions of the ground truth over some set <img src="https://
 ```python
 get_predictions_global(X)
 ```
-**Parameters** 
+**Parameters**
 * **X: *array-like of shape (n_samples, ...)***  
-Input patterns of some data. 
+Input patterns of some data.
 
 **Returns**  
 * **prob_Y_xt: *array-like of shape (n_samples, n_classes)***  
