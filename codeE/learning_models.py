@@ -13,7 +13,7 @@ import tensorflow as tf
 import keras
 import numpy as np
 from keras.models import Sequential,Model, clone_model
-from keras.layers import *
+from keras.layers import Dense, Dropout, Activation, Embedding, Flatten, InputLayer, Input, Reshape, BatchNormalization
 from keras import backend as K
 
 try:
@@ -293,7 +293,7 @@ def meta_init(array):
         return array.astype(dtype)
     return aux_func
     
-from keras.engine.topology import Layer
+from keras.layers import Layer
 class CrowdsLayer(Layer):
     def __init__(self, output_dim, num_annotators, conn_type="MW", conf_ma = 0, **kwargs):
         super(CrowdsLayer, self).__init__(**kwargs)
