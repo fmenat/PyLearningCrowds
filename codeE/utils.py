@@ -285,8 +285,8 @@ def estimate_batch_size(model, scale_by=5.0,precision = 2):
         (K.count_params(x) for x in model.trainable_weights),
         (K.count_params(x) for x in model.non_trainable_weights)
     )))
-    max_size = max(32,np.int(available_mem / (precision * num_params * scale_by)))
-    return np.int(2 ** math.floor(np.log(max_size)/np.log(2)))
+    max_size = max(32,np.int32(available_mem / (precision * num_params * scale_by)))
+    return np.int32(2 ** math.floor(np.log(max_size)/np.log(2)))
 
 def pre_init_F(model, X_inp, Z_targ, n_init, batch_size=32, reset_optimizer=True):
     print("Pre-train network %s on %d epochs..."%(model.name, n_init),end='',flush=True)

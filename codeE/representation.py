@@ -73,4 +73,4 @@ def categorical_var_representation(obs, no_label=-1):
         A_idx_var.append( A_i.astype('int32') )
         import keras
         y_obs_var.append( keras.utils.to_categorical( Y_i[A_i],num_classes=K).astype('int8') )
-    return np.asarray(y_obs_var), np.asarray(A_idx_var)
+    return np.asarray(y_obs_var, dtype="object"), np.asarray(A_idx_var, dtype="object")

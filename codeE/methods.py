@@ -321,7 +321,7 @@ class Super_ModelInf(Super_LabelInf):
 
         if self.base_model_lib == "keras":
             self.base_model.compile(optimizer=self.optimizer, loss='categorical_crossentropy') 
-            self.base_model.name = "base_model_z"
+            self.base_model._name = "base_model_z"
             self.max_Bsize_base = estimate_batch_size(self.base_model)
 
         elif self.base_model_lib =="sklearn":
@@ -728,7 +728,7 @@ class ModelInf_EM_CMOA(Super_ModelInf):
 
         self.group_model = model
         self.group_model.compile(optimizer=optimizer, loss='categorical_crossentropy') 
-        self.group_model.name = "group_model_g"
+        self.group_model._name = "group_model_g"
         self.compile_g = True
         self.max_Bsize_group = estimate_batch_size(self.group_model)
 
